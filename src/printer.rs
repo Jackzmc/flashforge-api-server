@@ -2,19 +2,34 @@ use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
 use log::{debug, trace};
+use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
 pub struct Printer {
-    socket_addr: SocketAddr
+    socket_addr: SocketAddr,
+    info: Option<PrinterInfo>
 }
+
 
 const PRINTER_API_PORT: u16 = 8899;
 
 impl Printer {
     pub fn new(ip_addr: IpAddr) -> Self {
         Printer {
-            socket_addr: SocketAddr::new(ip_addr, PRINTER_API_PORT)
+            socket_addr: SocketAddr::new(ip_addr, PRINTER_API_PORT),
+            info: None
         }
+    }
+
+    pub fn get_meta(&mut self) -> Option<PrinterInfo> {
+        if self.info.is_none() {
+            let res = self.send_request(PrinterRequest::GetInfo).ok();
+            // Should always be PrinterInfo
+            if let Some(PrinterResponse::PrinterInfo(info)) = res {
+                self.info = Some(info);
+            }
+        }
+        self.info.clone()
     }
 
     fn process_requests(&self, requests: &[PrinterRequest]) -> Result<PrinterResponse, String> {
@@ -45,5 +60,45 @@ impl Printer {
             printer_request
         ];
         self.process_requests(&requests)
+    }
+
+    pub fn get_info(&self) -> Result<PrinterInfo, String> {
+        match self.send_request(PrinterRequest::GetInfo) {
+            Ok(PrinterResponse::PrinterInfo(info)) => Ok(info),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn get_status(&self) -> Result<PrinterStatus, String> {
+        match self.send_request(PrinterRequest::GetStatus) {
+            Ok(PrinterResponse::PrinterStatus(v)) => Ok(v),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn get_temperatures(&self) -> Result<PrinterTemperature, String> {
+        match self.send_request(PrinterRequest::GetTemperature) {
+            Ok(PrinterResponse::PrinterTemperature(t)) => Ok(t),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn get_progress(&self) -> Result<PrinterProgress, String> {
+        match self.send_request(PrinterRequest::GetTemperature) {
+            Ok(PrinterResponse::PrinterProgress(t)) => Ok(t),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn get_head_position(&self) -> Result<PrinterHeadPosition, String> {
+        match self.send_request(PrinterRequest::GetTemperature) {
+            Ok(PrinterResponse::PrinterHeadPosition(t)) => Ok(t),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
     }
 }

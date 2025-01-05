@@ -1,7 +1,7 @@
 [smtp]
 # SMTP Server to send emails with
 host = "smtp.domain.com"
-port = ""
+port = 587
 auth = "tls" # or "SSL"
 user = ""
 password = ""

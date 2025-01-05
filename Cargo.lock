@@ -253,6 +253,7 @@ dependencies = [
  "rocket",
  "serde",
  "serde_json",
+ "toml",
  "tracing-subscriber",
 ]
 

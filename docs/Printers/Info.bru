@@ -1,0 +1,15 @@
+meta {
+  name: Info
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{PROTOCOL}}://{{HOST}}/api/printers/:printer/info
+  body: none
+  auth: none
+}
+
+params:path {
+  printer: main
+}
