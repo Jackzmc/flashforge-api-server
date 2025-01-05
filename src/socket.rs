@@ -8,7 +8,7 @@ use regex::Regex;
 use serde::Serialize;
 use crate::models::{EndStopPosition, Position, TemperatureMeasurement};
 use crate::socket::PrinterResponse::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
-use crate::util::parse_kv2;
+use crate::util::parse_kv;
 
 pub fn send_printer_requests(ip: SocketAddr, requests: &[PrinterRequest]) -> Result<Vec<String>, String> {
     trace!("connecting to {:?}", ip);
@@ -91,7 +91,7 @@ impl PrinterRequest {
         match self {
             PrinterRequest::ControlMessage => Ok(PrinterResponse::ControlSuccess),
             PrinterRequest::GetInfo => {
-                let kv = parse_kv2(&input)?;
+                let kv = parse_kv(&input)?;
                 debug!("{:?}", &kv);
                 Ok(PrinterInfo {
                     name: kv.get("Machine Name").unwrap().to_string(),
@@ -120,7 +120,7 @@ impl PrinterRequest {
                 })
             },
             PrinterRequest::GetTemperature => {
-                let kv = parse_kv2(input)?;
+                let kv = parse_kv(input)?;
                 debug!("{:?}", kv);
                 let temps = kv.into_iter().map(|(key, val)| {
                     let temp: Vec<f32> = val.split("/").map(|s|s.parse().unwrap()).collect();
@@ -132,7 +132,7 @@ impl PrinterRequest {
                 Ok(PrinterTemperature(temps))
             },
             PrinterRequest::GetStatus => {
-                let kv = parse_kv2(input)?;
+                let kv = parse_kv(input)?;
                 debug!("{:?}", kv);
                 Ok(PrinterStatus {
                     end_stop: EndStopPosition {
@@ -147,7 +147,7 @@ impl PrinterRequest {
                 })
             },
             PrinterRequest::GetHeadPosition => {
-              let kv = parse_kv2(input)?;
+              let kv = parse_kv(input)?;
                 Ok(PrinterHeadPosition {
                     x: kv.get("X").unwrap().parse().unwrap(),
                     y: kv.get("Y").unwrap().parse().unwrap(),

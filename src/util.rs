@@ -17,19 +17,19 @@ pub fn parse_multi_line(input: &str) -> HashMap<String, String> {
     map
 }
 
-pub fn parse_kv2(content: &str) -> Result<HashMap<String, String>, String> {
+pub fn parse_kv(content: &str) -> Result<HashMap<String, String>, String> {
     trace!("parsing: {:?}", content);
     let mut kv = HashMap::new();
     // Skip first line ("CMD <GCODE> Received\r\n"), rest should be kv
     for line in content.lines().skip(1) {
         if line == "ok" {
+            debug!("kv: {:?}", kv);
             return Ok(kv);
         }
         // Default will parse it as only key: value, but some cases we need to parse differently
         if let Ok((key, val)) = line.split_once(":").ok_or("invalid line") {
             if key == "X" {
                 let p = parse_multi_line(line);
-                debug!("{:?}", p);
                 kv.extend(p);
                 // let pieces: Vec<&str> = line.split(" ").collect();
                 // kv.insert("X", pieces[1]);
@@ -37,11 +37,9 @@ pub fn parse_kv2(content: &str) -> Result<HashMap<String, String>, String> {
                 // kv.insert("Z", pieces[5]);
             } else if key == "Endstop" {
                 let p = parse_multi_line(val);
-                debug!("{:?}", p);
                 kv.extend(p);
             } else if key == "T0" {
                 let p = parse_multi_line(line);
-                debug!("{:?}", p);
                 kv.extend(p);
             } else {
                 // kv.insert(key, val.trim_start());
