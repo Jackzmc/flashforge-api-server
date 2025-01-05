@@ -1,0 +1,22 @@
+[smtp]
+# SMTP Server to send emails with
+host = "smtp.domain.com"
+port = ""
+auth = "tls" # or "SSL"
+user = ""
+password = ""
+
+[notifications]
+# What channels to send notifications to, [] or exclude for none
+on_done = ["smtp"]
+
+[general]
+# An optional password required to be used for any API that writes data / changes something.
+# If blank or missing, all printers will be read-only
+write_password = "...."
+
+[printers]
+# All printers the api uses, this will be listed in /api/printers. The key is the friendly name of printer
+# Fields:
+#   ip - ip address of printer, without port (port defaults to 8899)
+main = { ip = "192.168.1.89" }
