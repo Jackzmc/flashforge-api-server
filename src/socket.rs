@@ -7,7 +7,7 @@ use log::{debug, trace, warn};
 use regex::Regex;
 use serde::Serialize;
 use crate::models::{EndStopPosition, Position, TemperatureMeasurement};
-use crate::socket::PrinterResponse::{PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
+use crate::socket::PrinterResponse::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::util::parse_kv2;
 
 pub fn send_printer_requests(ip: SocketAddr, requests: &[PrinterRequest]) -> Result<Vec<String>, String> {
@@ -58,10 +58,12 @@ pub enum PrinterResponse {
         position: Position
     },
     #[serde(rename = "position")]
-    PrinterPosition {
-        x: i32,
-        y: i32,
-        z: i32
+    PrinterHeadPosition {
+        x: f32,
+        y: f32,
+        z: f32,
+        a: f32,
+        b: u32
     },
     #[serde(rename = "temperatures")]
     PrinterTemperature(HashMap<String, TemperatureMeasurement>),
@@ -142,6 +144,16 @@ impl PrinterRequest {
                     move_mode: kv.get("MoveMode").unwrap().to_string(),
                     led: kv.get("LED").unwrap() == "1",
                     current_file: kv.get("CurrentFile").map(|s| s.to_string()),
+                })
+            },
+            PrinterRequest::GetHeadPosition => {
+              let kv = parse_kv2(input)?;
+                Ok(PrinterHeadPosition {
+                    x: kv.get("X").unwrap().parse().unwrap(),
+                    y: kv.get("Y").unwrap().parse().unwrap(),
+                    z: kv.get("Z").unwrap().parse().unwrap(),
+                    a: kv.get("A").unwrap().parse().unwrap(),
+                    b: kv.get("B").unwrap().parse().unwrap(),
                 })
             },
             _ => {

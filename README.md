@@ -1,7 +1,9 @@
 # Flashforge API
 
 Based on [01F0/flashforge-finder-api](https://github.com/01F0/flashforge-finder-api), but written in rust.
-I didn't like using flask for a "production server" and wanted to add some features
+I didn't like using flask for a "production server" and wanted to add some features.
+
+Built with rocket, but that might change
 
 ## Tested Printers
 Should work in theory on all the supported printers of flashforge-finder-api
@@ -15,7 +17,7 @@ In general, for now:
 * `http://localhost:8080/<printer ip>/info` - Get printer info
 * `http://localhost:8080/<printer ip>/status` - Get printer status
 * `http://localhost:8080/<printer ip>/temperature` - Get sensor temperatures, B for bed, T0 for main sensor
-* `http://localhost:8080/<printer ip>/position` - Get the printer's position
+* `http://localhost:8080/<printer ip>/head-position` - Get the printer's head position
 * `http://localhost:8080/<printer ip>/progress` - Get print progress
 
 ## Future Work

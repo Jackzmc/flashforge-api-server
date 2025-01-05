@@ -71,6 +71,16 @@ fn get_printer_progress(server: String) -> Result<Json<PrinterResponse>, Json<Ge
     }))?))
 }
 
+#[get("/<server>/head-position")]
+fn get_printer_head_position(server: String) -> Result<Json<PrinterResponse>, Json<GenericError>> {
+    // let server_addr = parse_address(server).map_err(|e| Json(e))?;
+    let printer = Printer::new(server.parse().unwrap());
+    Ok(Json(printer.send_request(PrinterRequest::GetHeadPosition).map_err(|e| Json(GenericError {
+        error: "SERVER_ERROR".to_string(),
+        message: Some(e)
+    }))?))
+}
+
 #[catch(404)]
 fn error_404(req: &Request) -> Json<GenericError> {
     Json(GenericError {
@@ -97,7 +107,8 @@ fn rocket() -> _ {
             get_printer_info,
             get_printer_temperature,
             get_printer_progress,
-            get_printer_status
+            get_printer_status,
+            get_printer_head_position
         ])
         .register("/", catchers![error_404]);
     info!("Server ready and listening on :{}", config.port);
