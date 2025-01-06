@@ -3,7 +3,9 @@
 Based on [01F0/flashforge-finder-api](https://github.com/01F0/flashforge-finder-api), but written in rust.
 I didn't like using flask for a "production server" and wanted to add some features.
 
-Built with rocket, but that might change
+Built with [Rocket](https://rocket.rs/).
+
+The server by default listens on `localhost:8080`.
 
 ## Tested Printers
 Should work in theory on all the supported printers of flashforge-finder-api
@@ -14,6 +16,7 @@ Should work in theory on all the supported printers of flashforge-finder-api
 The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), replace the ip with your server's
 
 In general, for now:
+* `http://localhost:8080/apis/printers` - Returns list of printer names
 * `http://localhost:8080/apis/printers/:printerId/info` - Get printer info
 * `http://localhost:8080/apis/printers/:printerId/status` - Get printer status
 * `http://localhost:8080/apis/printers/:printerId/temperatures` - Get sensor temperatures, B for bed, T0 for main sensor
@@ -24,6 +27,9 @@ In general, for now:
 
 * [ ] Built in mjpeg proxy 
   * So multiple clients can view at once
-* [ ] Notifications (email, push?, webhooks?) on completion
+* [x] Notifications (email, push?, webhooks?) on completion
+  * [x] Email
+  * [ ] Webhooks
+  * [ ] Push?
 * [ ] Simple UI that replaces need of polar3d
 * [x] Use config file for printer ips, instead of manually putting IP
