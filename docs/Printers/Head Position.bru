@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {{PROTOCOL}}://{{HOST}}/api/printers/head-position
+  url: {{PROTOCOL}}://{{HOST}}/api/printers/:printer/head-position
   body: none
   auth: none
+}
+
+params:path {
+  printer: {{PRINTER_ID}}
 }
