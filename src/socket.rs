@@ -1,38 +1,9 @@
-use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::LazyLock;
-use std::time::Duration;
 use log::{debug, trace, warn};
 use regex::Regex;
 use serde::Serialize;
 use crate::models::{EndStopPosition, Position, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature, TemperatureMeasurement};
-use crate::printer::Printer;
 use crate::util::parse_kv;
-
-pub fn send_printer_requests(ip: SocketAddr, requests: &[PrinterRequest]) -> Result<Vec<String>, String> {
-    trace!("connecting to {:?}", ip);
-    let mut conn = TcpStream::connect(ip).map_err(|e| e.to_string())?;
-    conn.set_write_timeout(Some(Duration::from_secs(3))).unwrap();
-    conn.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
-
-    let mut results: Vec<String> = Vec::with_capacity(requests.len());
-    for request in requests {
-        let mut buf = [0; 1024];
-        send_request(&mut conn, request)?;
-        conn.read(&mut buf).map_err(|e| e.to_string())?;
-        results.push(String::from_utf8_lossy(&buf).to_string());
-    }
-    debug!("return");
-    Ok(results)
-}
-fn send_request(conn: &mut TcpStream, req: &PrinterRequest) -> Result<(), String> {
-    trace!("sending gcode {:?}", req.get_gcode());
-    let req_str = req.get_instruction();
-    conn.write_all(req_str.as_bytes()).map_err(|e| e.to_string())?;
-    trace!("sent, now read");
-    Ok(())
-}
 
 #[derive(Debug)]
 pub enum PrinterRequest {

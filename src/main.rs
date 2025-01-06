@@ -6,21 +6,18 @@ mod config;
 mod printers;
 mod routes;
 
-use std::net::{AddrParseError, SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use log::{debug, info};
-use rocket::{catch, catchers, get, launch, routes, serde::json::Json, Request};
+use rocket::{catch, catchers, launch, routes, serde::json::Json};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::config::Config;
-use crate::models::{GenericError, Position};
-use crate::printer::Printer;
+use crate::models::{GenericError};
 use crate::printers::Printers;
 use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers};
-use crate::socket::{PrinterRequest, PrinterResponse};
 
 #[catch(404)]
-fn error_404(req: &Request) -> Json<GenericError> {
+fn error_404() -> Json<GenericError> {
     Json(GenericError {
         error: "NOT_FOUND".to_string(),
         message: Some("Route not found".to_string()),
