@@ -3,7 +3,7 @@
 host = "smtp.domain.com"
 port = 587
 encryption = "starttls" # or "tls" or "none"
-user = ""
+user = "" # Also used for the 'from' field
 password = ""
 
 [notifications]

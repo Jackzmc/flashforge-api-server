@@ -13,7 +13,7 @@ Should work in theory on all the supported printers of flashforge-finder-api
 
 ## API Doc
 
-The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), replace the ip with your server's
+The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), set the `:printerId` to that of your printers's id
 
 In general, for now:
 * `http://localhost:8080/apis/printers` - Returns list of printer names
@@ -33,3 +33,11 @@ In general, for now:
   * [ ] Push?
 * [ ] Simple UI that replaces need of polar3d
 * [x] Use config file for printer ips, instead of manually putting IP
+
+# Usage
+
+1. Build the project with `cargo build --release` or find a release
+2. Copy `config.example.toml` to `config.toml` and configure it
+   * All sections except [printers] are optional
+3. Run target/release/flashforge-api or the binary file
+   * The current directory must include the `config.toml` file
