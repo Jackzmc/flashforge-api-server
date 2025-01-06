@@ -2,11 +2,14 @@
 # SMTP Server to send emails with
 host = "smtp.domain.com"
 port = 587
-auth = "tls" # or "SSL"
+encryption = "starttls" # or "tls" or "none"
 user = ""
 password = ""
 
 [notifications]
+# Where to send to
+emails = ["your@email.com"]
+
 # What channels to send notifications to, [] or exclude for none
 on_done = ["smtp"]
 

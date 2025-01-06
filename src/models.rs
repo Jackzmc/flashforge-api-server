@@ -50,7 +50,7 @@ pub struct PrinterHeadPosition {
 #[derive(Serialize, Clone)]
 pub struct PrinterTemperature(pub HashMap<String, TemperatureMeasurement>);
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct PrinterProgress {
     pub layer: (u32, u32),
     pub byte: (u32, u32)

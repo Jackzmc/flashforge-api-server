@@ -1,32 +1,49 @@
+use std::fmt::Display;
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
 pub struct Printer {
     socket_addr: SocketAddr,
-    info: Option<PrinterInfo>
+    info: Option<PrinterInfo>,
+    name: String,
 }
 
-
+// The port the TCP API is on
 const PRINTER_API_PORT: u16 = 8899;
 
+impl Display for Printer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
 impl Printer {
-    pub fn new(ip_addr: IpAddr) -> Self {
+    pub fn new(name: String, ip_addr: IpAddr) -> Self {
         Printer {
             socket_addr: SocketAddr::new(ip_addr, PRINTER_API_PORT),
-            info: None
+            info: None,
+            name
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn ip(&self) -> IpAddr {
+        self.socket_addr.ip()
     }
 
     pub fn get_meta(&mut self) -> Option<PrinterInfo> {
         if self.info.is_none() {
-            let res = self.send_request(PrinterRequest::GetInfo).ok();
-            // Should always be PrinterInfo
-            if let Some(PrinterResponse::PrinterInfo(info)) = res {
-                self.info = Some(info);
+            match self.get_info() {
+                Ok(info) => self.info = Some(info),
+                Err(e) => {
+                    warn!("printer/{} get_meta error: {}", self.name, e);
+                }
             }
         }
         self.info.clone()
@@ -87,7 +104,7 @@ impl Printer {
     }
 
     pub fn get_progress(&self) -> Result<PrinterProgress, String> {
-        match self.send_request(PrinterRequest::GetTemperature) {
+        match self.send_request(PrinterRequest::GetProgress) {
             Ok(PrinterResponse::PrinterProgress(t)) => Ok(t),
             Ok(_) => panic!("got wrong response from request"),
             Err(e) => Err(e)
@@ -95,7 +112,7 @@ impl Printer {
     }
 
     pub fn get_head_position(&self) -> Result<PrinterHeadPosition, String> {
-        match self.send_request(PrinterRequest::GetTemperature) {
+        match self.send_request(PrinterRequest::GetHeadPosition) {
             Ok(PrinterResponse::PrinterHeadPosition(t)) => Ok(t),
             Ok(_) => panic!("got wrong response from request"),
             Err(e) => Err(e)

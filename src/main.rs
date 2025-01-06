@@ -7,7 +7,8 @@ mod printers;
 mod routes;
 
 use std::net::{AddrParseError, SocketAddr, ToSocketAddrs};
-use log::{debug,info};
+use std::sync::{Arc, Mutex};
+use log::{debug, info};
 use rocket::{catch, catchers, get, launch, routes, serde::json::Json, Request};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -36,11 +37,13 @@ fn rocket() -> _ {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let mut printers = Printers::new();
-    let config = Config::load();
+    let config = Arc::new(Config::load());
+    let mut printers = Printers::new(config.clone());
     for (id, printer_config) in &config.printers {
         printers.add_printer(id.to_string(), printer_config.ip)
     }
+    let printers = Arc::new(Mutex::new(printers));
+    Printers::start_watch_thread(printers.clone());
 
     let mut rk_config = rocket::Config::default();
     rk_config.port = 8080;

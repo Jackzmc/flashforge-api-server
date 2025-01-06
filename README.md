@@ -14,11 +14,11 @@ Should work in theory on all the supported printers of flashforge-finder-api
 The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), replace the ip with your server's
 
 In general, for now:
-* `http://localhost:8080/<printer ip>/info` - Get printer info
-* `http://localhost:8080/<printer ip>/status` - Get printer status
-* `http://localhost:8080/<printer ip>/temperature` - Get sensor temperatures, B for bed, T0 for main sensor
-* `http://localhost:8080/<printer ip>/head-position` - Get the printer's head position
-* `http://localhost:8080/<printer ip>/progress` - Get print progress
+* `http://localhost:8080/apis/printers/:printerId/info` - Get printer info
+* `http://localhost:8080/apis/printers/:printerId/status` - Get printer status
+* `http://localhost:8080/apis/printers/:printerId/temperatures` - Get sensor temperatures, B for bed, T0 for main sensor
+* `http://localhost:8080/apis/printers/:printerId/head-position` - Get the printer's head position
+* `http://localhost:8080/apis/printers/:printerId/progress` - Get print progress
 
 ## Future Work
 
@@ -26,4 +26,4 @@ In general, for now:
   * So multiple clients can view at once
 * [ ] Notifications (email, push?, webhooks?) on completion
 * [ ] Simple UI that replaces need of polar3d
-* [ ] Use config file for printer ips, instead of manually putting IP
+* [x] Use config file for printer ips, instead of manually putting IP

@@ -21,17 +21,27 @@ impl Config {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum EmailEncryption {
+    None,
+    StartTLS,
+    TLS
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmailConfig {
-    host: String,
-    port: u16,
-    auth: String,
-    user: String,
-    password: String
+    pub(crate) host: String,
+    pub(crate) port: u16,
+    pub(crate) encryption: EmailEncryption,
+    pub(crate) user: String,
+    pub(crate) password: String
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NotificationConfig {
-    on_done: Option<Vec<String>>
+    pub(crate) emails: Option<Vec<String>>,
+
+    pub(crate) on_done: Option<Vec<String>>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,3 +53,4 @@ pub struct GeneralConfig {
 pub struct PrinterConfig {
     pub(crate) ip: IpAddr
 }
+
