@@ -13,7 +13,7 @@ Should work in theory on all the supported printers of flashforge-finder-api
 
 ## API Doc
 
-The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), set the `:printerId` to that of your printers's id
+The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), set the `PRINTER` environment variable to that of your printers's id.
 
 In general, for now:
 * `http://localhost:8080/apis/printers` - Returns list of printer names
