@@ -9,7 +9,7 @@ The server by default listens on `localhost:8080`.
 
 ## Tested Printers
 Should work in theory on all the supported printers of flashforge-finder-api
-* Flashforge Adventuer 5M Pro
+* Flashforge Adventuer 5M Pro - Firmware v2.7.9
 
 ## API Doc
 

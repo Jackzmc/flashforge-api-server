@@ -99,7 +99,8 @@ impl Printers {
         !self.notification_sent.contains_key(printer_id) || self.notification_sent.get(printer_id).unwrap() != file_name
     }
 
-    fn send_notification(&self, printer: &Printer, notification_type: NotificationType) {
+    fn
+    send_notification(&self, printer: &Printer, notification_type: NotificationType) {
         if let Some(notification) = self.config.get_notification_destinations(&notification_type) {
             debug!("Sending notification: {:?}", notification_type);
             if let Some(emails) = &notification.emails {
