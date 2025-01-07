@@ -11,7 +11,7 @@ use log::{debug, info};
 use rocket::{catch, catchers, launch, routes, serde::json::Json};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::config::Config;
+use crate::config::{Config, ConfigManager};
 use crate::models::{GenericError};
 use crate::manager::Printers;
 use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers};
@@ -34,9 +34,9 @@ fn rocket() -> _ {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let config = Arc::new(Config::load());
+    let config = Arc::new(ConfigManager::load());
     let mut printers = Printers::new(config.clone());
-    for (id, printer_config) in &config.printers {
+    for (id, printer_config) in config.printers() {
         printers.add_printer(id.to_string(), printer_config.ip)
     }
     let printers = Arc::new(Mutex::new(printers));

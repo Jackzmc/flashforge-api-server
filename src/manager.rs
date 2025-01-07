@@ -8,7 +8,7 @@ use lettre::message::header::ContentType;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
 use log::{debug, error, trace, warn};
-use crate::config::{Config, EmailEncryption};
+use crate::config::{Config, ConfigManager, EmailEncryption};
 use crate::printer::Printer;
 use std::fmt::Write;
 
@@ -48,40 +48,17 @@ impl NotificationType {
 
 pub struct Printers {
     printers: HashMap<String, Printer>,
-    config: Arc<Config>,
-    mailer: Option<SmtpTransport>,
-
+    config: Arc<ConfigManager>,
     notification_sent: HashMap<String, String> // If printer (key) has value, then a print done notification has been submitted for file (value)
 }
 
 impl Printers {
-    pub fn new(config: Arc<Config>) -> Printers {
+    pub fn new(config: Arc<ConfigManager>) -> Printers {
         let mut s = Self {
             printers: HashMap::new(),
             config,
-            mailer: None,
             notification_sent: HashMap::new()
         };
-        if let Some(smtp) = &s.config.smtp {
-            if smtp.port <= 0 {
-                error!("SMTP: Smtp port is invalid, smtp support not enabled");
-            } else if smtp.user == "" {
-                error!("SMTP: Smtp user is empty, smtp support not enabled");
-            } else if smtp.host == "" {
-                error!("SMTP: Smtp host is empty, smtp support not enabled");
-            } else {
-                let builder = match smtp.encryption {
-                    EmailEncryption::None => SmtpTransport::builder_dangerous(&smtp.host),
-                    EmailEncryption::StartTLS => SmtpTransport::starttls_relay(&smtp.host).unwrap(),
-                    EmailEncryption::TLS => SmtpTransport::relay(&smtp.host).unwrap()
-                };
-                s.mailer = Some(builder
-                    .port(smtp.port)
-                    .credentials(Credentials::new(smtp.user.to_string(), smtp.password.to_string()))
-                    .build()
-                )
-            }
-        }
         s
     }
 
@@ -126,9 +103,9 @@ impl Printers {
 
     fn send_notification(&self, printer: &Printer, notification_type: NotificationType) {
         debug!("Sending notification: {:?}", notification_type);
-        let Some(notifications) = &self.config.notifications else { return; };
-        if let Some(mailer) = &self.mailer {
-            let user = &self.config.smtp.as_ref().unwrap().user;
+        let Some(notifications) = &self.config.notifications() else { return; };
+        if let Some(mailer) = &self.config.mailer() {
+            let user = &self.config.smtp().unwrap().user;
             trace!("smtp configured, sending from {}", user);
             match user.parse() {
                 Ok(from_addr) => {
