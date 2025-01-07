@@ -1,3 +1,6 @@
+# All sections are optional except [printers]
+# The SMTP section even if not used is validated, comment out if not using
+
 [smtp]
 # SMTP Server to send emails with
 host = "smtp.domain.com"
