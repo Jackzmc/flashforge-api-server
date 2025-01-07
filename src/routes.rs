@@ -2,7 +2,7 @@ use rocket::{get, State};
 use rocket::serde::json::Json;
 use crate::models::{GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::printer::Printer;
-use crate::printers::{PrinterManager};
+use crate::manager::{PrinterManager};
 
 #[get("/")]
 pub fn list_printers(printers: &State<PrinterManager>) -> Json<Vec<String>> {

@@ -3,7 +3,7 @@ mod socket;
 mod printer;
 mod util;
 mod config;
-mod printers;
+mod manager;
 mod routes;
 
 use std::sync::{Arc, Mutex};
@@ -13,7 +13,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::config::Config;
 use crate::models::{GenericError};
-use crate::printers::Printers;
+use crate::manager::Printers;
 use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers};
 
 #[catch(404)]
