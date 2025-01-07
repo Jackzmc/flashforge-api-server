@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
+use enum_map::{Enum, EnumMap};
 use lettre::SmtpTransport;
 use lettre::transport::smtp::authentication::Credentials;
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
+use crate::manager::NotificationType;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub(crate) smtp: Option<EmailConfig>,
-    pub(crate) notifications: Option<NotificationConfig>,
+    pub(crate) notifications: Option<HashMap<String, NotificationDestinations>>,
     pub(crate) general: Option<GeneralConfig>,
     pub(crate) printers: HashMap<String, PrinterConfig>
 }
@@ -16,6 +18,12 @@ pub struct Config {
 pub struct ConfigManager {
     config: Config,
     mailer: Option<SmtpTransport>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NotificationDestinations {
+    pub(crate) emails: Option<Vec<String>>,
+    pub(crate) webhooks: Option<Vec<String>>
 }
 
 
@@ -42,8 +50,15 @@ impl ConfigManager {
         self.config.smtp.as_ref()
     }
 
-    pub fn notifications(&self) -> Option<&NotificationConfig> {
-        self.config.notifications.as_ref()
+    pub fn get_notification_destinations(&self, notification_type: &NotificationType) -> Option<&NotificationDestinations> {
+        if let Some(notifications) = &self.config.notifications {
+            let key = match notification_type {
+                NotificationType::PrintComplete => { "on_done" },
+                _ => return None
+            };
+            return notifications.get(key)
+        }
+        None
     }
 
     pub fn general(&self) -> Option<&GeneralConfig> {

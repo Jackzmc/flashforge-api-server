@@ -6,12 +6,16 @@ encryption = "starttls" # or "tls" or "none"
 user = "" # Also used for the 'from' field
 password = ""
 
-[notifications]
-# Where to send to
-emails = ["your@email.com"]
+# You can specify where to send specific notifications to specific destinations.
+# Comment out a section if you do not want notifications, or leave empty lists
+# Notifications types:
+# - notifications.on_done
+#
+# Note: Webhooks are currently designed for discord compatibility only
 
-# What channels to send notifications to, [] or exclude for none
-on_done = ["smtp"]
+#[notifications.on_done]
+#emails = ["your@email.com"]
+#webhooks = ["https://discord.com/webhook-url-here"]
 
 [general]
 # An optional password required to be used for any API that writes data / changes something.

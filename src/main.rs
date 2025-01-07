@@ -11,7 +11,7 @@ use log::{debug, info};
 use rocket::{catch, catchers, launch, routes, serde::json::Json};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::config::{Config, ConfigManager};
+use crate::config::{ConfigManager};
 use crate::models::{GenericError};
 use crate::manager::Printers;
 use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers};

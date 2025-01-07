@@ -1,25 +1,24 @@
+use crate::config::ConfigManager;
+use crate::printer::Printer;
+use lettre::message::header::ContentType;
+use lettre::message::Mailbox;
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::{Address, Message, SmtpTransport, Transport};
+use log::{debug, error, trace, warn};
+use serde_json::json;
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::net::IpAddr;
 use std::ops::Not;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
-use lettre::{Address, Message, SmtpTransport, Transport};
-use lettre::message::header::ContentType;
-use lettre::message::Mailbox;
-use lettre::transport::smtp::authentication::Credentials;
-use log::{debug, error, trace, warn};
-use crate::config::{Config, ConfigManager, EmailEncryption};
-use crate::printer::Printer;
-use std::fmt::Write;
-
-
 
 static PROGRESS_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
 pub type PrinterManager = Arc<Mutex<Printers>>;
 
 #[derive(Debug)]
-enum NotificationType {
+pub enum NotificationType {
     PrintComplete
 }
 
@@ -54,12 +53,11 @@ pub struct Printers {
 
 impl Printers {
     pub fn new(config: Arc<ConfigManager>) -> Printers {
-        let mut s = Self {
+        Self {
             printers: HashMap::new(),
             config,
             notification_sent: HashMap::new()
-        };
-        s
+        }
     }
 
     pub fn start_watch_thread(manager: PrinterManager) {
@@ -102,8 +100,18 @@ impl Printers {
     }
 
     fn send_notification(&self, printer: &Printer, notification_type: NotificationType) {
-        debug!("Sending notification: {:?}", notification_type);
-        let Some(notifications) = &self.config.notifications() else { return; };
+        if let Some(notification) = self.config.get_notification_destinations(&notification_type) {
+            debug!("Sending notification: {:?}", notification_type);
+            if let Some(emails) = &notification.emails {
+                self.send_email_notifications(printer, &notification_type, emails.iter().map(|s| s.as_str()).collect())
+            }
+            if let Some(urls) = &notification.webhooks {
+                self.send_webhook_notifications(printer, &notification_type, urls.iter().map(|s| s.as_str()).collect())
+            }
+        }
+    }
+
+    fn send_email_notifications(&self, printer: &Printer, notification_type: &NotificationType, emails: Vec<&str>) {
         if let Some(mailer) = &self.config.mailer() {
             let user = &self.config.smtp().unwrap().user;
             trace!("smtp configured, sending from {}", user);
@@ -113,7 +121,7 @@ impl Printers {
                         .from(Mailbox::new(None, from_addr))
                         .subject(notification_type.get_subject(printer))
                         .header(ContentType::TEXT_PLAIN);
-                    for email in notifications.emails.iter().flatten() {
+                    for email in emails {
                         builder = builder.bcc(email.parse().unwrap())
                     }
                     let email = builder.body(notification_type.get_message(printer)).unwrap();
@@ -124,6 +132,31 @@ impl Printers {
                 Err(e) => {
                     error!("Could not parse from address \"{}\": {}", user, e);
                 }
+            }
+        }
+    }
+
+    fn send_webhook_notifications(&self, printer: &Printer, notification_type: &NotificationType, urls: Vec<&str>) {
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .user_agent(format!("jackzmc/{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
+            .build().expect("failed to create reqwest client for webhooks");
+        // TODO: proper struct? probably going to make it templated so eh
+        let body = json!({
+            "username": printer.name(),
+            "embeds": [
+                {
+                    "title": notification_type.get_subject(printer),
+                    "description": notification_type.get_message(printer),
+                }
+            ]
+        });
+        for url in urls {
+            let request = client
+                .post(url)
+                .body(body.to_string());
+            if let Err(e) = request.send() {
+                error!("Failed to send webhook to \"{}\":\n{}", url, e);
             }
         }
     }
