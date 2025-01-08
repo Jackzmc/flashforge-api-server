@@ -10,6 +10,8 @@ pub struct Printer {
     socket_addr: SocketAddr,
     info: Option<PrinterInfo>,
     name: String,
+    is_online: bool,
+    current_file: Option<String>
 }
 
 // The port the TCP API is on
@@ -25,7 +27,9 @@ impl Printer {
         Printer {
             socket_addr: SocketAddr::new(ip_addr, PRINTER_API_PORT),
             info: None,
-            name
+            name,
+            is_online: false,
+            current_file: None
         }
     }
 
@@ -36,6 +40,15 @@ impl Printer {
     pub fn ip(&self) -> IpAddr {
         self.socket_addr.ip()
     }
+
+    // Only updated by watcher thread
+    pub fn online(&self) -> bool { self.is_online }
+
+    pub fn set_online(&mut self, on: bool) { self.is_online = on; }
+
+    pub fn current_file(&self) -> &Option<String> { &self.current_file }
+
+    fn set_current_file(&mut self, file: Option<String>) { self.current_file = file }
 
     pub fn get_meta(&mut self) -> Option<PrinterInfo> {
         if self.info.is_none() {
@@ -77,6 +90,18 @@ impl Printer {
             printer_request
         ];
         self.process_requests(&requests)
+    }
+
+    pub fn refresh_status(&mut self) -> Result<(), String> {
+        if let Ok(status) = self.get_status() {
+            self.current_file = status.current_file;
+            self.is_online = true;
+        } else {
+            self.is_online = false;
+            // TODO: own error enum
+            return Err("Printer unreachable or offline".to_string());
+        }
+        Ok(())
     }
 
     pub fn get_info(&self) -> Result<PrinterInfo, String> {

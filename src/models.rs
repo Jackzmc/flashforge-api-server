@@ -39,6 +39,14 @@ pub struct PrinterInfo {
 }
 
 #[derive(Serialize, Clone)]
+pub struct CachedPrinterInfo {
+    pub name: String,
+    pub is_online: bool,
+    pub current_file: Option<String>,
+    pub firmware_version: Option<String>
+}
+
+#[derive(Serialize, Clone)]
 pub struct PrinterHeadPosition {
     pub x: f32,
     pub y: f32,

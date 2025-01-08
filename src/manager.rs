@@ -45,10 +45,12 @@ impl NotificationType {
     }
 }
 
+type PrinterContainer = Arc<Mutex<Printer>>;
+
 pub struct Printers {
-    printers: HashMap<String, Printer>,
+    printers: HashMap<String, PrinterContainer>,
     config: Arc<ConfigManager>,
-    notification_sent: HashMap<String, String> // If printer (key) has value, then a print done notification has been submitted for file (value)
+    notification_sent: HashMap<String, String>, // If printer (key) has value, then a print done notification has been submitted for file (value
 }
 
 impl Printers {
@@ -65,31 +67,54 @@ impl Printers {
         std::thread::spawn(move || {
             std::thread::sleep(PROGRESS_CHECK_INTERVAL);
             loop {
+                // Grab list of printers
+                trace!("Getting list of printers");
+                let (printers, mut sent_notifications) = {
+                    let mut lock = manager.lock().unwrap();
+                    (lock.printers(), lock.notification_sent.clone())
+                };
+
                 trace!("Checking printers");
-                let mut lock = manager.lock().unwrap();
-                let mut has_sent = lock.notification_sent.clone();
-                for (id, printer) in &lock.printers {
-                    if let Ok(prog) = printer.get_progress() {
+                // Update status of all printers, and check if there is a notification we need to send
+                let notify_queue: Vec<&PrinterContainer> = printers.iter().filter(|printer| {
+                    let mut printer = printer.lock().unwrap();
+                    if printer.refresh_status().is_ok() {
+                        if printer.current_file().is_none() { return false; }
+                        let prog = printer.get_progress().unwrap();
                         // Check if progress is 100%
+                        trace!("printer {} layer={:?} byte={:?}", printer.name(), prog.layer, prog.byte);
                         if prog.layer.0 >= prog.layer.1 {
                             // Get current file from status
                             let status = printer.get_status().unwrap();
                             if status.current_file.is_none() {
-                                continue;
+                                return false;
                             }
                             // Check if we have already sent a notification
                             let current_file = status.current_file.unwrap();
-                            let has_notified = lock.has_notified(id, &current_file);
+                            let has_notified = sent_notifications.get(printer.name()).unwrap_or(&"".to_string()) == &current_file;
 
                             if !has_notified {
-                                lock.send_notification(printer, NotificationType::PrintComplete);
-                                has_sent.insert(id.clone(), current_file);
+                                return true;
+                                // lock.send_notification(printer, NotificationType::PrintComplete);
+                                // has_sent.insert(id.clone(), current_file);
                             }
                         }
                     }
+                    false
+                }).collect();
+
+                trace!("Sending notifications");
+                // Send notifications to any as needed
+                {
+                    let mut lock = manager.lock().unwrap();
+                    for printer in notify_queue {
+                        let printer = printer.lock().unwrap();
+                        lock.send_notification(&*printer, NotificationType::PrintComplete);
+
+                        let current_file = printer.current_file().as_ref().unwrap().clone();
+                        sent_notifications.insert(printer.name().to_string(), current_file);
+                    }
                 }
-                lock.notification_sent = has_sent;
-                drop(lock);
                 std::thread::sleep(PROGRESS_CHECK_INTERVAL);
             }
         });
@@ -166,15 +191,20 @@ impl Printers {
         self.printers.keys().map(|s| s.clone()).collect()
     }
 
-    pub fn get_printer(&self, id: &str) -> Option<&Printer> {
-        self.printers.get(id)
+    pub fn printers(&self) -> Vec<PrinterContainer> {
+        self.printers.values().map(|v| v.clone()).collect()
+    }
+
+    pub fn get_printer(&self, id: &str) -> Option<PrinterContainer> {
+        self.printers.get(id).map(|printer| printer.clone())
     }
 
     pub fn add_printer(&mut self, id: String, ip: IpAddr) {
         debug!("adding printer {} with ip {}", id, ip);
         let mut printer = Printer::new(id.clone(), ip);
         printer.get_meta();
-        self.printers.insert(id, printer);
+        let container = Arc::new(Mutex::new(printer));
+        self.printers.insert(id, container);
     }
 }
 

@@ -14,7 +14,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use crate::config::{ConfigManager};
 use crate::models::{GenericError};
 use crate::manager::Printers;
-use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers};
+use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers, list_printers_names};
 
 #[catch(404)]
 fn error_404() -> Json<GenericError> {
@@ -49,6 +49,7 @@ fn rocket() -> _ {
         .manage(printers)
         .manage(config)
         .mount("/api/printers", routes![
+            list_printers_names,
             list_printers,
             get_printer_info,
             get_printer_temps,
