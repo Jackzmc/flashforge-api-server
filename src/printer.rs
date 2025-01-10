@@ -1,10 +1,20 @@
 use std::fmt::Display;
-use std::io::{Read, Write};
+use std::io::{Bytes, Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::thread::{sleep, spawn, Thread};
 use std::time::Duration;
+use futures::{StreamExt, TryStreamExt};
 use log::{debug, trace, warn};
+use reqwest::Url;
+use rocket::response::stream::ByteStream;
+use rocket::serde::json::Json;
+use rocket_multipart::MultipartSection;
+use tokio::sync::broadcast;
 use tokio::sync::mpsc::Receiver;
-use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
+use tokio::task::JoinHandle;
+use tokio_util::bytes::Buf;
+use tokio_util::codec::{AnyDelimiterCodec, BytesCodec, FramedRead, FramedWrite};
+use crate::models::{GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
 pub struct Printer {
@@ -13,6 +23,8 @@ pub struct Printer {
     name: String,
     is_online: bool,
     current_file: Option<String>,
+    camera_channel: broadcast::Sender<u8>,
+    camera_thread: Option<JoinHandle<()>>
     // camera_stream: Option<Receiver<>>
 }
 
@@ -29,12 +41,15 @@ impl Display for Printer {
 }
 impl Printer {
     pub fn new(name: String, ip_addr: IpAddr) -> Self {
+        let (tx, _) = broadcast::channel(1024);
         Printer {
             socket_addr: SocketAddr::new(ip_addr, PRINTER_API_PORT),
             info: None,
             name,
             is_online: false,
-            current_file: None
+            current_file: None,
+            camera_channel: tx,
+            camera_thread: None
         }
     }
 
@@ -147,5 +162,34 @@ impl Printer {
             Ok(_) => panic!("got wrong response from request"),
             Err(e) => Err(e)
         }
+    }
+
+    pub fn subscribe_camera(&mut self) -> Result<broadcast::Receiver<u8>, String> {
+        if self.camera_channel.receiver_count() == 1 {
+            // thread needs access to transmitter, rweference maybe to make sure its alive?
+            let stream_url = format!("http://{}:{}{}", self.ip(), PRINTER_CAM_PORT, PRINTER_CAM_STREAM_PATH);
+            let stream_url = Url::parse(&stream_url).map_err(|e| e.to_string())?;
+            let tx = self.camera_channel.clone();
+            let task = tokio::spawn(async move {
+                let res = reqwest::get(stream_url).await.unwrap(); //.map_err(|e| Json(GenericError {error: "PRINTER_INTERNAL_ERROR".to_string(), message: Some(e.to_string())})).unwrap();
+                let mut bytes_stream = res.bytes_stream(); //.map_err(std::io::Error::other);
+                // let mut fw = FramedRead::new(bytes_stream, BytesCodec::new());
+                while let Ok(chunk) = bytes_stream.next().await.unwrap() {
+                    for byte in chunk {
+                        tx.send(byte).unwrap();
+                    }
+                }
+                while tx.receiver_count() > 0 {
+
+                    sleep(Duration::from_secs(1))
+                }
+            });
+            self.camera_thread = Some(task);
+            // std::thread::spawn(|| async {
+            //
+            //     // No more subscribers, shut ourselves down
+            // });
+        }
+        Ok(self.camera_channel.subscribe())
     }
 }

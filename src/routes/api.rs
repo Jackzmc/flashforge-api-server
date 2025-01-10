@@ -11,6 +11,7 @@ use rocket::http::hyper::body::Bytes;
 use rocket::response::Debug;
 use rocket::response::stream::{stream, ByteStream, ReaderStream};
 use rocket::serde::json::Json;
+use tokio_stream::wrappers::BroadcastStream;
 use rocket_multipart::{MultipartSection, MultipartStream};
 use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec};
 use tokio_util::io::StreamReader;
@@ -108,7 +109,7 @@ pub fn get_printer_head_position(printers: &State<PrinterManager>, printer_id: &
 // 	multipart/x-mixed-replace;boundary=boundarydonotcross
 #[get("/<printer_id>/camera")]
 pub async fn get_printer_camera(printers: &State<PrinterManager>, printer_id: &str) -> Result<MultipartStream<impl Stream<Item = MultipartSection<'static>>>, Json<GenericError>> {
-    let stream_url = {
+    let mut camera_rx = {
         let printer = {
             let lock = printers.lock().unwrap();
             let printer = lock.get_printer(printer_id).ok_or(Json(GenericError {
@@ -118,18 +119,17 @@ pub async fn get_printer_camera(printers: &State<PrinterManager>, printer_id: &s
             drop(lock);
             printer.clone()
         };
-        let printer = printer.lock().unwrap();
-        let stream_url = format!("http://{}:{}{}", printer.ip(), PRINTER_CAM_PORT, PRINTER_CAM_STREAM_PATH);
-        let stream_url = Url::parse(&stream_url).map_err(|e| Json(GenericError { error: "CAM_URL_ERROR".to_string(), message: Some(e.to_string()) }))?;
-        stream_url
+        let mut printer = printer.lock().unwrap();
+        printer.subscribe_camera().unwrap()
     };
     // TODO: somehow store the stream in Printer, so many clients -> one reqwest of camera.
     // As it stands this is a 1:1 proxy, which the printer only processes 1 client at a time.
-    trace!("starting reqwest for {}", stream_url);
-    let res = reqwest::get(stream_url).await.map_err(|e| Json(GenericError {error: "PRINTER_INTERNAL_ERROR".to_string(), message: Some(e.to_string())}))?;
-    let mut bytes_stream = res.bytes_stream().map_err(std::io::Error::other);
+    // trace!("starting reqwest for {}", stream_url);
+    // let res = reqwest::get(stream_url).await.map_err(|e| Json(GenericError {error: "PRINTER_INTERNAL_ERROR".to_string(), message: Some(e.to_string())}))?;
+    // let mut bytes_stream = res.bytes_stream().map_err(std::io::Error::other);
     // let f = FramedWrite::new(bytes_stream, LinesCodec::new());
-    let s = tokio_util::io::StreamReader::new(bytes_stream);
+    let s = tokio_util::io::StreamReader::new(BroadcastStream::new(camera_rx));
+    // camera_rx.unwrap().recv().await.unwrap()
     let response_stream = MultipartStream::new(
         "boundarydonotcross",
         stream! {
