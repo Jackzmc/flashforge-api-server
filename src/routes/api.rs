@@ -136,9 +136,9 @@ pub async fn get_printer_camera(printers: &State<PrinterManager>, printer_id: &s
             yield MultipartSection::new(s)
         },
     )
-        .with_subtype("x-mixed-replace")
-        .add_header(Header::new("Cache-Control", "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0"))
-        .add_header(Header::new("Access-Control-Allow-Origin", "*"));
+        .with_subtype("x-mixed-replace");
+        // .add_header(Header::new("Cache-Control", "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0"))
+        // .add_header(Header::new("Access-Control-Allow-Origin", "*"));
     Ok(response_stream)
 
     // URL of the MJPEG stream you want to proxy

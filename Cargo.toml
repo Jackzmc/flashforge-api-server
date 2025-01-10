@@ -17,5 +17,6 @@ reqwest = { version = "0.12.12", features = ["blocking", "stream"] }
 tokio = "1.42.0"
 async-stream = "0.3.6"
 tokio-util = { version = "0.7.13", features = ["codec"]}
-rocket-multipart = { path = "/home/jackz/Documents/Code/git/rocket-multipart/" }
+#rocket-multipart = { path = "/home/jackz/Documents/Code/git/rocket-multipart/" }
+rocket-multipart = "0.2.1"
 futures = "0.3.31"
