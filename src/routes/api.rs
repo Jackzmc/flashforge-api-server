@@ -126,7 +126,7 @@ pub async fn get_printer_camera(printers: &State<PrinterManager>, printer_id: &s
     // TODO: somehow store the stream in Printer, so many clients -> one reqwest of camera.
     // As it stands this is a 1:1 proxy, which the printer only processes 1 client at a time.
     trace!("starting reqwest for {}", stream_url);
-    let res = reqwest::get(stream_url).await.unwrap();
+    let res = reqwest::get(stream_url).await.map_err(|e| Json(GenericError {error: "PRINTER_INTERNAL_ERROR".to_string(), message: Some(e.to_string())}))?;
     let mut bytes_stream = res.bytes_stream().map_err(std::io::Error::other);
     // let f = FramedWrite::new(bytes_stream, LinesCodec::new());
     let s = tokio_util::io::StreamReader::new(bytes_stream);
