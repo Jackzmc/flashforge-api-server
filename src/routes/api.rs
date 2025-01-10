@@ -18,6 +18,7 @@ use crate::models::{CachedPrinterInfo, GenericError, PrinterHeadPosition, Printe
 use crate::printer::{Printer, PRINTER_CAM_PORT, PRINTER_CAM_STREAM_PATH};
 use crate::manager::{PrinterManager};
 
+
 #[get("/names")]
 pub fn list_printers_names(printers: &State<PrinterManager>) -> Json<Vec<String>> {
     let printers = printers.lock().unwrap();
@@ -122,19 +123,18 @@ pub async fn get_printer_camera(printers: &State<PrinterManager>, printer_id: &s
         let stream_url = Url::parse(&stream_url).map_err(|e| Json(GenericError { error: "CAM_URL_ERROR".to_string(), message: Some(e.to_string()) }))?;
         stream_url
     };
-    // TODO: keep & re-use instance of reqwest stream, so many clients -> one reqwest of camera
+    // TODO: somehow store the stream in Printer, so many clients -> one reqwest of camera.
+    // As it stands this is a 1:1 proxy, which the printer only processes 1 client at a time.
     trace!("starting reqwest for {}", stream_url);
     let res = reqwest::get(stream_url).await.unwrap();
-    let mut bytes_stream = res.bytes_stream();
+    let mut bytes_stream = res.bytes_stream().map_err(std::io::Error::other);
     // let f = FramedWrite::new(bytes_stream, LinesCodec::new());
-    use futures::stream::TryStreamExt;
-    let stream = bytes_stream.map_err(std::io::Error::other);
-    let s = tokio_util::io::StreamReader::new(stream);
+    let s = tokio_util::io::StreamReader::new(bytes_stream);
     let response_stream = MultipartStream::new(
         "boundarydonotcross",
         stream! {
-        yield MultipartSection::new(s)
-    },
+            yield MultipartSection::new(s)
+        },
     )
         .with_subtype("x-mixed-replace")
         .add_header(Header::new("Cache-Control", "no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0"))

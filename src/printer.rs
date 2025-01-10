@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
 use log::{debug, trace, warn};
+use tokio::sync::mpsc::Receiver;
 use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
@@ -11,7 +12,8 @@ pub struct Printer {
     info: Option<PrinterInfo>,
     name: String,
     is_online: bool,
-    current_file: Option<String>
+    current_file: Option<String>,
+    // camera_stream: Option<Receiver<>>
 }
 
 // The port the TCP API is on
