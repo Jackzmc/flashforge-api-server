@@ -22,6 +22,7 @@ In general, for now:
 * `http://localhost:8080/apis/printers/:printerId/temperatures` - Get sensor temperatures, B for bed, T0 for main sensor
 * `http://localhost:8080/apis/printers/:printerId/head-position` - Get the printer's head position
 * `http://localhost:8080/apis/printers/:printerId/progress` - Get print progress
+* `http://localhost:8080/apis/printers/:printerId/camera` - See printer's camera, supporting multiple clients viewing at once
 
 ## Future Work
 
