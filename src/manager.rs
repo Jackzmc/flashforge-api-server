@@ -94,6 +94,7 @@ impl Printers {
                             let has_notified = sent_notifications.get(printer.name()).unwrap_or(&"".to_string()) == &current_file;
 
                             if !has_notified {
+                                debug!("will notify for printer {}", printer.name());
                                 return true;
                                 // lock.send_notification(printer, NotificationType::PrintComplete);
                                 // has_sent.insert(id.clone(), current_file);
@@ -103,7 +104,7 @@ impl Printers {
                     false
                 }).collect();
 
-                trace!("Sending notifications");
+                // trace!("Sending any notifications");
                 // Send notifications to any as needed
                 {
                     let mut lock = manager.lock().unwrap();
