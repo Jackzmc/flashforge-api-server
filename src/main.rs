@@ -8,13 +8,16 @@ mod routes;
 
 use std::sync::{Arc, Mutex};
 use log::{debug, info};
+use reqwest::get;
 use rocket::{catch, catchers, launch, routes, serde::json::Json};
+use rocket::fs::FileServer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::config::{ConfigManager};
 use crate::models::{GenericError};
 use crate::manager::Printers;
-use crate::routes::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers, list_printers_names};
+use crate::routes::api;
+// use crate::routes::api::{get_printer_head_position, get_printer_info, get_printer_progress, get_printer_status, get_printer_temps, list_printers, list_printers_names};
 
 #[catch(404)]
 fn error_404() -> Json<GenericError> {
@@ -44,19 +47,23 @@ fn rocket() -> _ {
 
     let mut rk_config = rocket::Config::default();
     rk_config.port = 8080;
+
     let r = rocket::build()
         .configure(&rk_config)
-        .manage(printers)
         .manage(config)
+        .manage(printers)
         .mount("/api/printers", routes![
-            list_printers_names,
-            list_printers,
-            get_printer_info,
-            get_printer_temps,
-            get_printer_progress,
-            get_printer_status,
-            get_printer_head_position
+            api::list_printers_names,
+            api::list_printers,
+            api::get_printer_info,
+            api::get_printer_temps,
+            api::get_printer_progress,
+            api::get_printer_status,
+            api::get_printer_head_position
         ])
+        // .mount("/", routes![
+        //     routes::ui::index
+        // ])
         .register("/", catchers![error_404]);
     info!("Server ready and listening on :{}", rk_config.port);
     r

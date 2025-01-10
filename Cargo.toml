@@ -14,3 +14,4 @@ toml = "0.8.19"
 lettre = { version = "0.11.11", features = ["rustls-tls"] }
 enum-map = "2.3.0"
 reqwest = { version = "0.12.12", features = ["blocking"] }
+tokio = "1.42.0"
