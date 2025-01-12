@@ -149,7 +149,8 @@ pub async fn get_printer_snapshot(printers: & State<PrinterManager>, printer_id:
         .map_err(|e| Either::Left(JpegImage(BASE64_STANDARD.decode(NO_IMAGE_BASE64).unwrap())))
 }
 
-
+// TODO: add headers (Connection: close) and (Cache-Control: no-cache ...)
+// Cannot get it to work with rocket, needs Response to set headers but it will not compile
 #[get("/<printer_id>/camera")]
 pub async fn get_printer_camera(printers: & State<PrinterManager>, printer_id: String) -> Result<MjpegStream<ByteStream<Pin<Box<dyn Stream<Item = Vec<u8>> + Send + 'static>>>>, Either<JpegImage, String>> {
     let mut camera_rx = {
