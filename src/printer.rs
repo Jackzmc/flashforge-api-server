@@ -15,7 +15,10 @@ pub struct Printer {
 }
 
 // The port the TCP API is on
-const PRINTER_API_PORT: u16 = 8899;
+pub const PRINTER_API_PORT: u16 = 8899;
+pub const PRINTER_CAM_PORT: u16 = 8080;
+pub const PRINTER_CAM_STREAM_PATH: &'static str = "/?action=stream";
+pub const PRINTER_CAM_SNAPSHOT_PATH: &'static str = "/?action=snapshot";
 
 impl Display for Printer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

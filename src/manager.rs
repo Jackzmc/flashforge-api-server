@@ -78,13 +78,12 @@ impl Printers {
                 // Update status of all printers, and check if there is a notification we need to send
                 let notify_queue: Vec<&PrinterContainer> = printers.iter().filter(|printer| {
                     let mut printer = printer.lock().unwrap();
-                    let prev_file = printer.current_file().as_ref().map(|s| s.to_string());
                     if printer.refresh_status().is_ok() {
                         if printer.current_file().is_none() { return false; }
                         let prog = printer.get_progress().unwrap();
                         // Check if progress is 100%
                         trace!("printer {} layer={:?} byte={:?}", printer.name(), prog.layer, prog.byte);
-                        if prev_file.is_some() && prog.byte.0 >= prog.byte.1 {
+                        if prog.layer.0 >= prog.layer.1 {
                             // Get current file from status
                             let status = printer.get_status().unwrap();
                             if status.current_file.is_none() {
@@ -95,8 +94,8 @@ impl Printers {
                             let has_notified = sent_notifications.get(printer.name()).unwrap_or(&"".to_string()) == &current_file;
 
                             if !has_notified {
-                                return true
-                                // return true;
+                                debug!("will notify for printer {}", printer.name());
+                                return true;
                                 // lock.send_notification(printer, NotificationType::PrintComplete);
                                 // has_sent.insert(id.clone(), current_file);
                             }
@@ -105,6 +104,7 @@ impl Printers {
                     false
                 }).collect();
 
+                // trace!("Sending any notifications");
                 // Send notifications to any as needed
                 {
                     let mut lock = manager.lock().unwrap();
