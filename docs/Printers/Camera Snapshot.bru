@@ -1,0 +1,21 @@
+meta {
+  name: Camera Snapshot
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{PROTOCOL}}://{{HOST}}/api/printers/:printer/snapshot
+  body: none
+  auth: none
+}
+
+params:path {
+  printer: {{PRINTER_ID}}
+}
+
+docs {
+  NOTE: This is just for documentation, but Bruno does not support this request, because it is a stream that never ends on its own
+  
+  Try this request in your browser
+}
