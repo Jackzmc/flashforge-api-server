@@ -12,6 +12,8 @@ use std::net::IpAddr;
 use std::ops::Not;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use futures::future::join_all;
+use futures::StreamExt;
 use tokio::sync::Mutex;
 
 static PROGRESS_CHECK_INTERVAL: Duration = Duration::from_secs(60);
@@ -70,52 +72,47 @@ impl Printers {
             loop {
                 // Grab list of printers
                 trace!("Getting list of printers");
-                let (printers, mut sent_notifications) = {
-                    let mut lock = manager.lock().await;
-                    (lock.printers(), lock.notification_sent.clone())
-                };
+                let mut sent_notifications = {
+                    let manager = manager.lock().await;
+                    let (printers, mut sent_notifications) = {
+                        let lock = &manager;
+                        (lock.printers(), lock.notification_sent.clone())
+                    };
 
-                trace!("Checking printers");
-                // Update status of all printers, and check if there is a notification we need to send
-                let notify_queue: Vec<&PrinterContainer> = printers.iter().filter(|printer| {
-                    // // let mut printer = printer.lock().await;
-                    // // if printer.refresh_status().is_ok() {
-                    // //     if printer.current_file().is_none() { return false; }
-                    // //     let prog = printer.get_progress().unwrap();
-                    // //     // Check if progress is 100%
-                    // //     trace!("printer {} layer={:?} byte={:?}", printer.name(), prog.layer, prog.byte);
-                    // //     if prog.layer.0 >= prog.layer.1 {
-                    // //         // Get current file from status
-                    // //         let status = printer.get_status().unwrap();
-                    // //         if status.current_file.is_none() {
-                    // //             return false;
-                    // //         }
-                    // //         // Check if we have already sent a notification
-                    // //         let current_file = status.current_file.unwrap();
-                    // //         let has_notified = sent_notifications.get(printer.name()).unwrap_or(&"".to_string()) == &current_file;
-                    // //
-                    // //         if !has_notified {
-                    // //             debug!("will notify for printer {}", printer.name());
-                    // //             return true;
-                    // //             // lock.send_notification(printer, NotificationType::PrintComplete);
-                    // //             // has_sent.insert(id.clone(), current_file);
-                    // //         }
-                    // //     }
-                    // }
-                    false
-                }).collect();
+                    trace!("Checking printers");
+                    for printer in printers {
+                        let mut printer = printer.lock().await;
+                        if printer.refresh_status().is_ok() {
+                            if printer.current_file().is_none() { continue; }
+                            let prog = printer.get_progress().unwrap();
+                            // Check if progress is 100%
+                            trace!("printer {} layer={:?} byte={:?}", printer.name(), prog.layer, prog.byte);
+                            if prog.layer.0 >= prog.layer.1 {
+                                // Get current file from status
+                                let status = printer.get_status().unwrap();
+                                if status.current_file.is_none() {
+                                    continue;
+                                }
+                                // Check if we have already sent a notification
+                                let current_file = status.current_file.unwrap();
+                                let has_notified = sent_notifications.get(printer.name()).unwrap_or(&"".to_string()) == &current_file;
 
-                // trace!("Sending any notifications");
-                // Send notifications to any as needed
-                {
-                    let mut lock = manager.lock().await;
-                    for printer in notify_queue {
-                        let printer = printer.lock().await;
-                        lock.send_notification(&*printer, NotificationType::PrintComplete);
+                                if !has_notified {
+                                    debug!("will notify for printer {}", printer.name());
+                                    manager.send_notification(&*printer, NotificationType::PrintComplete);
+                                    // has_sent.insert(id.clone(), current_file);
 
-                        let current_file = printer.current_file().as_ref().unwrap().clone();
-                        sent_notifications.insert(printer.name().to_string(), current_file);
+                                    let current_file = printer.current_file().as_ref().unwrap().clone();
+                                    sent_notifications.insert(printer.name().to_string(), current_file);
+                                }
+                            }
+                        }
                     }
+                    sent_notifications
+                };
+                {
+                    let mut manager = manager.lock().await;
+                    manager.notification_sent = sent_notifications;
                 }
                 tokio::time::sleep(PROGRESS_CHECK_INTERVAL).await;
             }
