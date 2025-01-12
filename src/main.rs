@@ -6,11 +6,12 @@ mod config;
 mod manager;
 mod routes;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use log::{debug, info};
 use reqwest::get;
 use rocket::{catch, catchers, launch, routes, serde::json::Json};
 use rocket::fs::FileServer;
+use tokio::sync::Mutex;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::config::{ConfigManager};
@@ -28,7 +29,7 @@ fn error_404() -> Json<GenericError> {
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::filter::EnvFilter::try_from_default_env()
@@ -43,7 +44,7 @@ fn rocket() -> _ {
         printers.add_printer(id.to_string(), printer_config.ip)
     }
     let printers = Arc::new(Mutex::new(printers));
-    Printers::start_watch_thread(printers.clone());
+    Printers::start_watch_thread(printers.clone()).await;
 
     let mut rk_config = rocket::Config::default();
     rk_config.port = 8080;
@@ -60,6 +61,7 @@ fn rocket() -> _ {
             api::get_printer_progress,
             api::get_printer_status,
             api::get_printer_head_position,
+            api::get_printer_snapshot,
             api::get_printer_camera
         ])
         // .mount("/", routes![

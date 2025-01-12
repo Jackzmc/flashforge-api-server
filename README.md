@@ -22,10 +22,12 @@ In general, for now:
 * `http://localhost:8080/apis/printers/:printerId/temperatures` - Get sensor temperatures, B for bed, T0 for main sensor
 * `http://localhost:8080/apis/printers/:printerId/head-position` - Get the printer's head position
 * `http://localhost:8080/apis/printers/:printerId/progress` - Get print progress
+* `http://localhost:8080/apis/printers/:printerId/snapshot` - Get a single frame of printer's camera
+* `http://localhost:8080/apis/printers/:printerId/camera` - See printer's camera live, supporting multiple clients viewing at once
 
 ## Future Work
 
-* [ ] Built in mjpeg proxy 
+* [x] Built in mjpeg proxy 
   * So multiple clients can view at once
 * [x] Notifications (email, push?, webhooks?) on completion
   * [x] Email
