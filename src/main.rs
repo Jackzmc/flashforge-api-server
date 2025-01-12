@@ -61,7 +61,8 @@ async fn rocket() -> _ {
             api::get_printer_progress,
             api::get_printer_status,
             api::get_printer_head_position,
-            api::get_printer_snapshot
+            api::get_printer_snapshot,
+            api::get_printer_camera
         ])
         // .mount("/", routes![
         //     routes::ui::index
