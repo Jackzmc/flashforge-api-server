@@ -1,23 +1,17 @@
-use crate::config::{ConfigManager, EmailEncryption};
+use crate::config::{ConfigManager};
 use crate::printer::Printer;
 
-use log::{debug, error, trace, warn};
+use log::{debug, error, trace};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::net::IpAddr;
-use std::ops::Not;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
 use std::time::Duration;
-use futures::executor::block_on;
-use futures::future::join_all;
-use futures::StreamExt;
 use mail_send::mail_builder::MessageBuilder;
 use mail_send::mail_builder::mime::BodyPart;
 use reqwest::multipart::Part;
-use rocket::http::hyper::body::HttpBody;
 use tokio::sync::Mutex;
-use tokio::task::{block_in_place, spawn_blocking};
 
 static PROGRESS_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -32,6 +26,7 @@ impl NotificationType {
     pub fn get_subject(&self, printer: &Printer) -> String {
         match self {
             NotificationType::PrintComplete => format!("Print complete on {}", printer.name()),
+            #[allow(unreachable_patterns)]
             _ => printer.name().to_string()
         }
     }
@@ -46,6 +41,7 @@ impl NotificationType {
                 // TODO: more data?
                 str
             }
+            #[allow(unreachable_patterns)]
             _ => "".to_string()
         }
     }
@@ -75,7 +71,7 @@ impl Printers {
             loop {
                 // Grab list of printers
                 trace!("Getting list of printers");
-                let mut sent_notifications = {
+                let sent_notifications = {
                     let manager = manager.lock().await;
                     let (printers, mut sent_notifications) = {
                         let lock = &manager;
@@ -120,10 +116,6 @@ impl Printers {
                 tokio::time::sleep(PROGRESS_CHECK_INTERVAL).await;
             }
         });
-    }
-
-    fn has_notified(&self, printer_id: &str, file_name: &str) -> bool {
-        !self.notification_sent.contains_key(printer_id) || self.notification_sent.get(printer_id).unwrap() != file_name
     }
 
     pub async fn send_notification(&self, printer: &mut Printer, notification_type: NotificationType) {

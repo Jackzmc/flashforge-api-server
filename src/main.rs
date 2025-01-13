@@ -7,10 +7,8 @@ mod manager;
 mod routes;
 
 use std::sync::{Arc};
-use log::{debug, info};
-use reqwest::get;
+use log::{info};
 use rocket::{catch, catchers, launch, routes, serde::json::Json};
-use rocket::fs::FileServer;
 use tokio::sync::Mutex;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;

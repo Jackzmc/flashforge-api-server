@@ -1,21 +1,13 @@
 use std::cmp::PartialEq;
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr};
 use std::sync::Arc;
-use enum_map::{Enum, EnumMap};
-use log::{debug, error};
+use log::{error};
 use mail_send::{Credentials, SmtpClient, SmtpClientBuilder};
-// use mail_send::smtp::tls::build_tls_config;
-use rocket::yansi::Paint;
 use serde::{Deserialize, Serialize};
-use tokio::io::BufStream;
-use tokio::net::{TcpSocket, TcpStream};
+use tokio::net::{TcpStream};
 use tokio::sync::Mutex;
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::rustls::ClientConfig;
-use tokio_rustls::TlsConnector;
-// use tokio_native_tls::TlsStream;
-// use tokio_rustls::client::TlsStream;
 
 use crate::manager::NotificationType;
 
@@ -40,6 +32,7 @@ pub struct NotificationDestinations {
 
 pub type Mailer = SmtpClient<TlsStream<TcpStream>>;
 
+#[allow(unused)]
 impl ConfigManager {
     pub async fn load() -> Self {
         let config = toml::from_str(&std::fs::read_to_string("config.toml").expect("could not read config.toml file")).map_err(|e| {

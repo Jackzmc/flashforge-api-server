@@ -1,24 +1,15 @@
+use futures::StreamExt;
 use std::fmt::Display;
-use std::io::{Bytes, Read, Write};
+use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::{Arc, RwLock};
-use std::thread::{sleep, spawn, Thread};
 use std::time::Duration;
-use futures::{StreamExt, TryStreamExt};
-use log::{debug, trace, warn};
+use log::{trace, warn};
 use multipart_stream::Part;
 use reqwest::Url;
-use rocket::http::hyper::Uri;
-use rocket::response::stream::ByteStream;
-use rocket::serde::json::Json;
-use rocket::uri;
-use rocket_multipart::MultipartSection;
 use tokio::sync::broadcast;
-use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
-use tokio_util::bytes::{Buf, BufMut, BytesMut};
-use tokio_util::codec::{AnyDelimiterCodec, BytesCodec, FramedRead, FramedWrite};
-use crate::models::{GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
+use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
 pub struct Printer {
@@ -37,8 +28,6 @@ pub struct Printer {
 pub const PRINTER_API_PORT: u16 = 8899;
 pub const PRINTER_CAM_PORT: u16 = 8080;
 pub const PRINTER_CAM_STREAM_PATH: &'static str = "/?action=stream";
-pub const PRINTER_CAM_SNAPSHOT_PATH: &'static str = "/?action=snapshot";
-
 impl Display for Printer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
@@ -70,11 +59,8 @@ impl Printer {
     // Only updated by watcher thread
     pub fn online(&self) -> bool { self.is_online }
 
-    pub fn set_online(&mut self, on: bool) { self.is_online = on; }
-
     pub fn current_file(&self) -> &Option<String> { &self.current_file }
 
-    fn set_current_file(&mut self, file: Option<String>) { self.current_file = file }
 
     pub fn get_meta(&mut self) -> Option<PrinterInfo> {
         if self.info.is_none() {
@@ -172,7 +158,7 @@ impl Printer {
 
     /// Returns the last received image, if any. Call [get_camera_snapshot] for a live
     pub fn last_image(&self) -> Option<Vec<u8>> {
-        let read = self.last_image.read().unwrap();
+        let read = self.last_image.read().expect("poisoned");
         read.clone()
     }
 
@@ -199,19 +185,13 @@ impl Printer {
             let tx = self.camera_channel.clone();
             let task = tokio::spawn(async move {
                 trace!("starting reqwest");
-                let res = reqwest::get(stream_url).await.unwrap(); //.map_err(|e| Json(GenericError {error: "PRINTER_INTERNAL_ERROR".to_string(), message: Some(e.to_string())})).unwrap();
-                let mut bytes_stream = res.bytes_stream(); //.map_err(std::io::Error::other);
-                // Needs to parse each multipart "frame", as new clients cannot read half way in
-                // let mut fw = FramedRead::new(bytes_stream, BytesCodec::new());
+                // TODO: better handling of offline printer
+                let res = reqwest::get(stream_url).await.expect("failed to fetch stream");
+                let bytes_stream = res.bytes_stream();
                 trace!("starting read loop");
                 let image_store = image_store;
                 let mut chunk_stream = multipart_stream::parse(bytes_stream, "boundarydonotcross");
                 while let Ok(part) = chunk_stream.next().await.unwrap() {
-                    // TODO: store last body?
-
-                    // Update our last image
-                    // trace!("got part, updating image");
-                    // trace!("{:?}", part.headers);
                     let mut write = image_store.write().unwrap();
                     *write = Some(part.body.to_vec());
                     if let Err(_) = tx.send(part) {
@@ -219,22 +199,8 @@ impl Printer {
                         break;
                     }
                 }
-                // while let Ok(chunk) = bytes_stream.next().await.unwrap() {
-                //     if tx.receiver_count() == 0 {
-                //         trace!("no more viewers, stopping task");
-                //         break;
-                //     }
-                //     // for byte in chunk {
-                //     //     tx.send(byte).unwrap();
-                //     // }
-                //     // tx.send(BytesMut::from(chunk)).unwrap();
-                // }
             });
             self.camera_task = Some(task);
-            // std::thread::spawn(|| async {
-            //
-            //     // No more subscribers, shut ourselves down
-            // });
         }
         Ok(sub)
     }

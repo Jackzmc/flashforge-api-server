@@ -1,6 +1,6 @@
 use crate::models::{EndStopPosition, Position, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature, TemperatureMeasurement};
 use crate::util::parse_kv;
-use log::{debug, trace, warn};
+use log::{debug};
 use regex::Regex;
 use serde::Serialize;
 use std::sync::LazyLock;
@@ -105,6 +105,7 @@ impl PrinterRequest {
                     b: kv.get("B").unwrap().parse().unwrap(),
                 }))
             },
+            #[allow(unreachable_patterns)]
             _ => {
                 debug!("unknown request {:?}. content: {:?}", self, input);
                 Err("unknown request".to_string())
