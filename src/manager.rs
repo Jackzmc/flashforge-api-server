@@ -14,6 +14,7 @@ use futures::future::join_all;
 use futures::StreamExt;
 use mail_send::mail_builder::MessageBuilder;
 use mail_send::mail_builder::mime::BodyPart;
+use reqwest::multipart::Part;
 use rocket::http::hyper::body::HttpBody;
 use tokio::sync::Mutex;
 use tokio::task::{block_in_place, spawn_blocking};
@@ -127,6 +128,9 @@ impl Printers {
 
     pub async fn send_notification(&self, printer: &mut Printer, notification_type: NotificationType) {
         if let Some(notification) = self.config.get_notification_destinations(&notification_type) {
+            // Fetch latest image
+            printer.get_camera_snapshot().await.ok();
+
             debug!("Sending notification: {:?}", notification_type);
             if let Some(emails) = &notification.emails {
                 debug!("have emails, sending emails");
@@ -151,52 +155,14 @@ impl Printers {
             .from(send_user.as_str())
             .text_body(body)
             .subject(subject);
-        if let Ok(last_img) = printer.get_camera_snapshot().await {
+        if let Some(last_img) = printer.last_image() {
             builder = builder.attachment("image/jpeg", "printer_image.jpg", BodyPart::from(last_img));
         }
         for to_email in emails {
             builder = builder.bcc(to_email);
         }
         mailer.send(builder).await.expect("failed to send email");
-        //  let body = notification_type.get_message(printer);
-        //  // let mut builder = Message::builder()
-        //  //     .from(Mailbox::new(None, from_addr))
-        //  //     .subject(notification_type.get_subject(printer))
-        //  //     .header(ContentType::TEXT_PLAIN);
-        // let emails: Vec<EmailAddress> = emails.iter().map(|e| EmailAddress::new(e.to_string()).expect("bad email address")).collect();
-        // let envelope = Envelope::new(Some(EmailAddress::new(send_user.clone()).unwrap()), emails).expect("bad envelope");
-        // let email = SendableEmail::new(envelope, body.clone()).;
         trace!("Sent notification {:?} for printer {}", notification_type, printer);
-
-
-        // let config = self.config.clone();
-        // // let printer = printer.lock().await;
-        // let printer = printer.clone();
-        // tokio::task::spawn_blocking(move || {
-        //     let printer = block_on(|| printer.lock());
-        //     if let Some(mailer) = &config.mailer() {
-        //          let user = &config.smtp().unwrap().user;
-        //          trace!("smtp configured, sending from {}", user);
-        //          match user.parse() {
-        //              Ok(from_addr) => {
-        //                  let mut builder = Message::builder()
-        //                      .from(Mailbox::new(None, from_addr))
-        //                      .subject(notification_type.get_subject(printer))
-        //                      .header(ContentType::TEXT_PLAIN);
-        //                  for email in emails {
-        //                      builder = builder.bcc(email.parse().unwrap())
-        //                  }
-        //                  let email = builder.body(notification_type.get_message(printer)).unwrap();
-        //
-        //                  mailer.send(&email).unwrap();
-        //                  trace!("Sent notification {:?} for printer {}", notification_type, printer);
-        //              },
-        //              Err(e) => {
-        //                  error!("Could not parse from address \"{}\": {}", user, e);
-        //              }
-        //          }
-        //     }
-        //  }).await.unwrap();
     }
 
     async fn send_webhook_notifications(&self, printer: &mut Printer, notification_type: NotificationType, urls: Vec<&str>) {
@@ -212,18 +178,36 @@ impl Printers {
                 {
                     "title": notification_type.get_subject(&*printer),
                     "description": notification_type.get_message(&*printer),
+                    "image": {
+                        "url": "attachment://printer_image.jpg"
+                    }
                 }
             ]
         });
         for url in urls {
             trace!("POST {}", url);
+            let mut form_data = reqwest::multipart::Form::new()
+                .text("payload_json", body.to_string());
+            if let Some(image) = printer.last_image() {
+                let part = Part::bytes(image)
+                    .file_name("printer_image.jpg")
+                    .mime_str("image/jpeg")
+                    .unwrap();
+                form_data = form_data.part("file1", part);
+            }
             let request = client
                 .post(url)
-                .body(body.to_string());
-            if let Err(e) = request.send().await {
-                error!("Failed to send webhook to \"{}\":\n{}", url, e);
+                .multipart(form_data);
+            match request.send().await {
+                Ok(response) => {
+                    if let Err(err) = response.error_for_status() {
+                        error!("Failed to send webhook: \n{}", err);
+                    }
+                },
+                Err(err) => {
+                    error!("Failed to send webhook to \"{}\":\n{}", url, err);
+                }
             }
-            trace!("SENT");
         }
     }
 
