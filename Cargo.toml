@@ -11,15 +11,15 @@ tracing-subscriber = {  version = "0.3.19", features = ["env-filter"] }
 log = "0.4.22"
 regex = "1.11.1"
 toml = "0.8.19"
-lettre = { version = "0.11.11", features = ["rustls-tls"] }
 enum-map = "2.3.0"
-reqwest = { version = "0.12.12", features = ["blocking", "stream"] }
+reqwest = { version = "0.12.12", features = ["stream"] }
 tokio = { version = "1.42.0"}
 async-stream = "0.3.6"
 tokio-util = { version = "0.7.13", features = ["codec"]}
-#rocket-multipart = { path = "/home/jackz/Documents/Code/git/rocket-multipart/" }
 rocket-multipart = "0.2.1"
 futures = "0.3.31"
 tokio-stream = { version = "0.1.17" , features = ["sync"]}
 multipart-stream = "0.1.2"
 base64 = "0.22.1"
+mail-send = "0.4.9"
+tokio-rustls = "0.26.1"

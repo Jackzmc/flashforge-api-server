@@ -1,9 +1,6 @@
-use crate::config::ConfigManager;
+use crate::config::{ConfigManager, EmailEncryption};
 use crate::printer::Printer;
-use lettre::message::header::ContentType;
-use lettre::message::Mailbox;
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Address, Message, SmtpTransport, Transport};
+
 use log::{debug, error, trace, warn};
 use serde_json::json;
 use std::collections::HashMap;
@@ -12,15 +9,20 @@ use std::net::IpAddr;
 use std::ops::Not;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use futures::executor::block_on;
 use futures::future::join_all;
 use futures::StreamExt;
+use mail_send::mail_builder::MessageBuilder;
+use mail_send::mail_builder::mime::BodyPart;
+use rocket::http::hyper::body::HttpBody;
 use tokio::sync::Mutex;
+use tokio::task::{block_in_place, spawn_blocking};
 
 static PROGRESS_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
 pub type PrinterManager = Arc<Mutex<Printers>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum NotificationType {
     PrintComplete
 }
@@ -38,10 +40,10 @@ impl NotificationType {
             NotificationType::PrintComplete => {
                 let status = printer.get_status().unwrap();
                 let mut str = String::new();
-                write!(str, "File: {}\n", status.current_file.unwrap_or("unknown".to_string())).unwrap();
+                write!(str, "File: {}\n", status.current_file.unwrap_or("(None)".to_string())).unwrap();
                 write!(str, "IP: {}\n", printer.ip()).unwrap();
+                // TODO: more data?
                 str
-                // TODO: send an image?
             }
             _ => "".to_string()
         }
@@ -99,7 +101,7 @@ impl Printers {
 
                                 if !has_notified {
                                     debug!("will notify for printer {}", printer.name());
-                                    manager.send_notification(&*printer, NotificationType::PrintComplete);
+                                    manager.send_notification(&mut printer, NotificationType::PrintComplete).await;
                                     // has_sent.insert(id.clone(), current_file);
 
                                     let current_file = printer.current_file().as_ref().unwrap().clone();
@@ -123,66 +125,105 @@ impl Printers {
         !self.notification_sent.contains_key(printer_id) || self.notification_sent.get(printer_id).unwrap() != file_name
     }
 
-    fn
-    send_notification(&self, printer: &Printer, notification_type: NotificationType) {
+    pub async fn send_notification(&self, printer: &mut Printer, notification_type: NotificationType) {
         if let Some(notification) = self.config.get_notification_destinations(&notification_type) {
             debug!("Sending notification: {:?}", notification_type);
             if let Some(emails) = &notification.emails {
-                self.send_email_notifications(printer, &notification_type, emails.iter().map(|s| s.as_str()).collect())
+                debug!("have emails, sending emails");
+                self.send_email_notifications(printer, notification_type, emails.iter().map(|s| s.as_str()).collect()).await
             }
             if let Some(urls) = &notification.webhooks {
-                self.send_webhook_notifications(printer, &notification_type, urls.iter().map(|s| s.as_str()).collect())
+                debug!("have webhooks, sending webhooks");
+                self.send_webhook_notifications(printer, notification_type, urls.iter().map(|s| s.as_str()).collect()).await
             }
         }
     }
+    async fn send_email_notifications(&self, printer: &mut Printer, notification_type: NotificationType, emails: Vec<&str>) {
+        let Some(mailer) = self.config.mailer() else { return; };
+        let mut mailer = mailer.lock().await;
 
-    fn send_email_notifications(&self, printer: &Printer, notification_type: &NotificationType, emails: Vec<&str>) {
-        if let Some(mailer) = &self.config.mailer() {
-            let user = &self.config.smtp().unwrap().user;
-            trace!("smtp configured, sending from {}", user);
-            match user.parse() {
-                Ok(from_addr) => {
-                    let mut builder = Message::builder()
-                        .from(Mailbox::new(None, from_addr))
-                        .subject(notification_type.get_subject(printer))
-                        .header(ContentType::TEXT_PLAIN);
-                    for email in emails {
-                        builder = builder.bcc(email.parse().unwrap())
-                    }
-                    let email = builder.body(notification_type.get_message(printer)).unwrap();
+        let send_user = &self.config.smtp().unwrap().user;
+        let subject = notification_type.get_subject(printer);
+        let body = notification_type.get_message(printer);
 
-                    mailer.send(&email).unwrap();
-                    trace!("Sent notification {:?} for printer {}", notification_type, printer);
-                },
-                Err(e) => {
-                    error!("Could not parse from address \"{}\": {}", user, e);
-                }
-            }
+        trace!("smtp configured, sending from {}", send_user);
+        let mut builder = MessageBuilder::new()
+            .from(send_user.as_str())
+            .text_body(body)
+            .subject(subject);
+        if let Ok(last_img) = printer.get_camera_snapshot().await {
+            builder = builder.attachment("image/jpeg", "printer_image.jpg", BodyPart::from(last_img));
         }
+        for to_email in emails {
+            builder = builder.bcc(to_email);
+        }
+        mailer.send(builder).await.expect("failed to send email");
+        //  let body = notification_type.get_message(printer);
+        //  // let mut builder = Message::builder()
+        //  //     .from(Mailbox::new(None, from_addr))
+        //  //     .subject(notification_type.get_subject(printer))
+        //  //     .header(ContentType::TEXT_PLAIN);
+        // let emails: Vec<EmailAddress> = emails.iter().map(|e| EmailAddress::new(e.to_string()).expect("bad email address")).collect();
+        // let envelope = Envelope::new(Some(EmailAddress::new(send_user.clone()).unwrap()), emails).expect("bad envelope");
+        // let email = SendableEmail::new(envelope, body.clone()).;
+        trace!("Sent notification {:?} for printer {}", notification_type, printer);
+
+
+        // let config = self.config.clone();
+        // // let printer = printer.lock().await;
+        // let printer = printer.clone();
+        // tokio::task::spawn_blocking(move || {
+        //     let printer = block_on(|| printer.lock());
+        //     if let Some(mailer) = &config.mailer() {
+        //          let user = &config.smtp().unwrap().user;
+        //          trace!("smtp configured, sending from {}", user);
+        //          match user.parse() {
+        //              Ok(from_addr) => {
+        //                  let mut builder = Message::builder()
+        //                      .from(Mailbox::new(None, from_addr))
+        //                      .subject(notification_type.get_subject(printer))
+        //                      .header(ContentType::TEXT_PLAIN);
+        //                  for email in emails {
+        //                      builder = builder.bcc(email.parse().unwrap())
+        //                  }
+        //                  let email = builder.body(notification_type.get_message(printer)).unwrap();
+        //
+        //                  mailer.send(&email).unwrap();
+        //                  trace!("Sent notification {:?} for printer {}", notification_type, printer);
+        //              },
+        //              Err(e) => {
+        //                  error!("Could not parse from address \"{}\": {}", user, e);
+        //              }
+        //          }
+        //     }
+        //  }).await.unwrap();
     }
 
-    fn send_webhook_notifications(&self, printer: &Printer, notification_type: &NotificationType, urls: Vec<&str>) {
-        let client = reqwest::blocking::Client::builder()
+    async fn send_webhook_notifications(&self, printer: &mut Printer, notification_type: NotificationType, urls: Vec<&str>) {
+        let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .user_agent(format!("jackzmc/{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
             .build().expect("failed to create reqwest client for webhooks");
         // TODO: proper struct? probably going to make it templated so eh
+        trace!("created webhook client");
         let body = json!({
             "username": printer.name(),
             "embeds": [
                 {
-                    "title": notification_type.get_subject(printer),
-                    "description": notification_type.get_message(printer),
+                    "title": notification_type.get_subject(&*printer),
+                    "description": notification_type.get_message(&*printer),
                 }
             ]
         });
         for url in urls {
+            trace!("POST {}", url);
             let request = client
                 .post(url)
                 .body(body.to_string());
-            if let Err(e) = request.send() {
+            if let Err(e) = request.send().await {
                 error!("Failed to send webhook to \"{}\":\n{}", url, e);
             }
+            trace!("SENT");
         }
     }
 

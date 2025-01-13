@@ -1,10 +1,22 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use enum_map::{Enum, EnumMap};
-use lettre::SmtpTransport;
-use lettre::transport::smtp::authentication::Credentials;
 use log::{debug, error};
+use mail_send::{Credentials, SmtpClient, SmtpClientBuilder};
+// use mail_send::smtp::tls::build_tls_config;
+use rocket::yansi::Paint;
 use serde::{Deserialize, Serialize};
+use tokio::io::BufStream;
+use tokio::net::{TcpSocket, TcpStream};
+use tokio::sync::Mutex;
+use tokio_rustls::client::TlsStream;
+use tokio_rustls::rustls::ClientConfig;
+use tokio_rustls::TlsConnector;
+// use tokio_native_tls::TlsStream;
+// use tokio_rustls::client::TlsStream;
+
 use crate::manager::NotificationType;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,7 +29,7 @@ pub struct Config {
 
 pub struct ConfigManager {
     config: Config,
-    mailer: Option<SmtpTransport>,
+    mailer: Option<Arc<Mutex<Mailer>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -26,9 +38,10 @@ pub struct NotificationDestinations {
     pub(crate) webhooks: Option<Vec<String>>
 }
 
+pub type Mailer = SmtpClient<TlsStream<TcpStream>>;
 
 impl ConfigManager {
-    pub fn load() -> Self {
+    pub async fn load() -> Self {
         let config = toml::from_str(&std::fs::read_to_string("config.toml").expect("could not read config.toml file")).map_err(|e| {
             error!("Failed to parse config.toml: {} span={:?}", e.message(), e.span());
             std::process::exit(1);
@@ -37,11 +50,12 @@ impl ConfigManager {
             config,
             mailer: None
         };
-        match s.setup_mailer() {
-            Ok(m) => { s.mailer = m },
+        match s.setup_mailer().await {
+            Ok(Some(m)) => { s.mailer = Some(Arc::new(Mutex::new(m))); },
             Err(e) => {
                 error!("Failed to setup mailer: {}", e);
             }
+            _ => {}
         }
         s
     }
@@ -69,30 +83,44 @@ impl ConfigManager {
         &self.config.printers
     }
 
-    pub fn mailer(&self) -> Option<&SmtpTransport> {
-        self.mailer.as_ref()
+    pub fn mailer(&self) -> Option<Arc<Mutex<Mailer>>> {
+        self.mailer.as_ref().map(|m| m.clone())
     }
 
     /// Sets up SMTP mailer, if configured. Ok(None) if not setup, Err if invalid configuration
-    fn setup_mailer(&mut self) -> Result<Option<SmtpTransport>, &str> {
+    async fn setup_mailer(&mut self) -> Result<Option<Mailer>, String> {
         if let Some(smtp) = &self.config.smtp {
             if smtp.port <= 0 {
-               Err("SMTP: Smtp port is invalid, smtp support not enabled")
+               Err("SMTP: Smtp port is invalid, smtp support not enabled".to_string())
             } else if smtp.user == "" {
-                Err("SMTP: Smtp user is empty, smtp support not enabled")
+                Err("SMTP: Smtp user is empty, smtp support not enabled".to_string())
             } else if smtp.host == "" {
-                Err("SMTP: Smtp host is empty, smtp support not enabled")
+                Err("SMTP: Smtp host is empty, smtp support not enabled".to_string())
             } else {
-                let builder = match smtp.encryption {
-                    EmailEncryption::None => SmtpTransport::builder_dangerous(&smtp.host),
-                    EmailEncryption::StartTLS => SmtpTransport::starttls_relay(&smtp.host).unwrap(),
-                    EmailEncryption::TLS => SmtpTransport::relay(&smtp.host).unwrap()
-                };
-                Ok(Some(builder
-                    .port(smtp.port)
-                    .credentials(Credentials::new(smtp.user.to_string(), smtp.password.to_string()))
-                    .build()
-                ))
+                let client = SmtpClientBuilder::new(&smtp.host, smtp.port)
+                    .implicit_tls(smtp.encryption == EmailEncryption::TLS)
+                    .credentials(Credentials::new(&smtp.user, &smtp.password))
+                    .connect()
+                    .await
+                    .unwrap();
+                Ok(Some(client))
+                //
+                // let mut client = SmtpClient::new();
+                // if smtp.encryption == EmailEncryption::StartTLS {
+                //     client = client.without_greeting();
+                // }
+                // // let builder = match smtp.encryption {
+                // //     EmailEncryption::None => SmtpTransport::builder_dangerous(&smtp.host),
+                // //     EmailEncryption::StartTLS => SmtpTransport::starttls_relay(&smtp.host).unwrap(),
+                // //     EmailEncryption::TLS => SmtpTransport::relay(&smtp.host).unwrap()
+                // // };
+                // let tcp = TcpStream::connect((smtp.host.as_str(), smtp.port)).await
+                //     .map_err(|e| e.to_string())?;
+                // let stream = BufStream::new(tcp);
+                // let mut transport = SmtpTransport::new(client, stream).await.map_err(|e| e.to_string())?;
+                // let creds = Credentials::new(smtp.user.clone(), smtp.password.clone());
+                // transport.try_login(&creds, &[Mechanism::Plain]).await.map_err(|e| e.to_string())?;
+                // Ok(Some(transport))
             }
         } else {
             Ok(None)
@@ -100,7 +128,7 @@ impl ConfigManager {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum EmailEncryption {
     None,

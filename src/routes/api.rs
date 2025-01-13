@@ -25,7 +25,7 @@ use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec};
 use tokio_util::io::StreamReader;
 use crate::models::{CachedPrinterInfo, GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::printer::{Printer, PRINTER_CAM_PORT, PRINTER_CAM_STREAM_PATH};
-use crate::manager::{PrinterManager};
+use crate::manager::{NotificationType, PrinterManager};
 use std::io::Write;
 
 
@@ -115,6 +115,17 @@ pub async fn get_printer_head_position(printers: &State<PrinterManager>, printer
                             -> Result<Json<PrinterHeadPosition>, Json<GenericError>>
 {
     try_printer_json(printers, printer_id, |printer| printer.get_head_position()).await
+}
+
+#[get("/<printer_id>/test")]
+pub async fn test(printers: &State<PrinterManager>, printer_id: &str)
+                                       -> Result<(), Json<GenericError>>
+{
+    let lock = printers.lock().await;
+    let printer = lock.get_printer(printer_id).unwrap();
+    let mut printer = printer.lock().await;
+    lock.send_notification(&mut printer, NotificationType::PrintComplete).await;
+    Ok(())
 }
 
 #[derive(Responder)]

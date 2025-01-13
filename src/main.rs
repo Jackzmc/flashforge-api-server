@@ -30,6 +30,7 @@ fn error_404() -> Json<GenericError> {
 
 #[launch]
 async fn rocket() -> _ {
+    tokio_rustls::rustls::crypto::ring::default_provider().install_default().unwrap();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::filter::EnvFilter::try_from_default_env()
@@ -38,7 +39,7 @@ async fn rocket() -> _ {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let config = Arc::new(ConfigManager::load());
+    let config = Arc::new(ConfigManager::load().await);
     let mut printers = Printers::new(config.clone());
     for (id, printer_config) in config.printers() {
         printers.add_printer(id.to_string(), printer_config.ip)
@@ -62,7 +63,8 @@ async fn rocket() -> _ {
             api::get_printer_status,
             api::get_printer_head_position,
             api::get_printer_snapshot,
-            api::get_printer_camera
+            api::get_printer_camera,
+            api::test
         ])
         // .mount("/", routes![
         //     routes::ui::index

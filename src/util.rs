@@ -11,6 +11,7 @@ pub fn parse_multi_line(input: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
     for cap in RE_KV.captures_iter(input) {
+        // let val = Some(cap[2].to_string()).filter(|s| !s.is_empty());
         map.insert(cap[1].trim_start().to_string(), cap[2].to_string());
     }
 
