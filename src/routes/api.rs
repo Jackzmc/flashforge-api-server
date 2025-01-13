@@ -73,28 +73,28 @@ pub async fn get_printer_info(printers: &State<PrinterManager>, printer_id: &str
 
 #[get("/<printer_id>/status")]
 pub async fn get_printer_status(printers: &State<PrinterManager>, printer_id: &str)
-                        -> Result<Json<PrinterStatus>, Json<GenericError>>
+    -> Result<Json<PrinterStatus>, Json<GenericError>>
 {
     try_printer_json(printers, printer_id, |printer| printer.get_status()).await
 }
 
 #[get("/<printer_id>/temperatures")]
 pub async fn get_printer_temps(printers: &State<PrinterManager>, printer_id: &str)
-                          -> Result<Json<PrinterTemperature>, Json<GenericError>>
+    -> Result<Json<PrinterTemperature>, Json<GenericError>>
 {
     try_printer_json(printers, printer_id, |printer| printer.get_temperatures()).await
 }
 
 #[get("/<printer_id>/progress")]
 pub async fn get_printer_progress(printers: &State<PrinterManager>, printer_id: &str)
-                          -> Result<Json<PrinterProgress>, Json<GenericError>>
+    -> Result<Json<PrinterProgress>, Json<GenericError>>
 {
     try_printer_json(printers, printer_id, |printer| printer.get_progress()).await
 }
 
 #[get("/<printer_id>/head-position")]
 pub async fn get_printer_head_position(printers: &State<PrinterManager>, printer_id: &str)
-                            -> Result<Json<PrinterHeadPosition>, Json<GenericError>>
+    -> Result<Json<PrinterHeadPosition>, Json<GenericError>>
 {
     try_printer_json(printers, printer_id, |printer| printer.get_head_position()).await
 }
@@ -151,14 +151,13 @@ pub async fn get_printer_camera(printers: & State<PrinterManager>, printer_id: S
         while let Ok(part) = camera_rx.recv().await {
             let len: usize = part.headers.get("content-length").unwrap().to_str().unwrap().parse().unwrap();
             let mut s = Vec::with_capacity(len+512);
-            write!(s, "--boundarydonotcross\r\n").ok();
+            writeln!(s, "--boundarydonotcross\r").ok();
             for header in part.headers.iter() {
                 write!(s, "{}: {}\r\n", header.0, header.1.to_str().unwrap()).ok();
             }
-            write!(s, "\r\n").ok();
-            // s.append()
+            writeln!(s, "\r").ok();
             s.extend_from_slice(part.body.iter().as_slice());
-            write!(s, "\r\n").ok();
+            writeln!(s, "\r").ok();
             yield s;
         }
     };

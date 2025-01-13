@@ -64,9 +64,6 @@ async fn rocket() -> _ {
             api::get_printer_snapshot,
             api::get_printer_camera
         ])
-        // .mount("/", routes![
-        //     routes::ui::index
-        // ])
         .register("/", catchers![error_404]);
     info!("Server ready and listening on :{}", rk_config.port);
     r
