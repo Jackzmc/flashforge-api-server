@@ -44,8 +44,10 @@ async fn rocket() -> _ {
     let printers = Arc::new(Mutex::new(printers));
     Printers::start_watch_thread(printers.clone()).await;
 
-    let mut rk_config = rocket::Config::default();
-    rk_config.port = 8080;
+    let rk_config = rocket::Config {
+        port: 8080,
+        ..Default::default()
+    };
 
     let r = rocket::build()
         .configure(&rk_config)

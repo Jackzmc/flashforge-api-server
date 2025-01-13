@@ -27,7 +27,7 @@ pub struct Printer {
 // The port the TCP API is on
 pub const PRINTER_API_PORT: u16 = 8899;
 pub const PRINTER_CAM_PORT: u16 = 8080;
-pub const PRINTER_CAM_STREAM_PATH: &'static str = "/?action=stream";
+pub const PRINTER_CAM_STREAM_PATH: &str = "/?action=stream";
 impl Display for Printer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
@@ -194,7 +194,7 @@ impl Printer {
                 while let Ok(part) = chunk_stream.next().await.unwrap() {
                     let mut write = image_store.write().unwrap();
                     *write = Some(part.body.to_vec());
-                    if let Err(_) = tx.send(part) {
+                    if tx.send(part).is_err() {
                         trace!("no more subscribers, stopping task");
                         break;
                     }

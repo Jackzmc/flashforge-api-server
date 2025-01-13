@@ -38,7 +38,7 @@ impl PrinterRequest {
         match self {
             PrinterRequest::ControlMessage => Ok(PrinterResponse::ControlSuccess),
             PrinterRequest::GetInfo => {
-                let kv = parse_kv(&input)?;
+                let kv = parse_kv(input)?;
                 debug!("{:?}", &kv);
                 Ok(PrinterResponse::PrinterInfo(PrinterInfo{
                     name: kv.get("Machine Name").unwrap().to_string(),

@@ -83,15 +83,15 @@ impl ConfigManager {
     /// Sets up SMTP mailer, if configured. Ok(None) if not setup, Err if invalid configuration
     async fn setup_mailer(&mut self) -> Result<Option<Mailer>, String> {
         if let Some(smtp) = &self.config.smtp {
-            if smtp.port <= 0 {
+            if smtp.port == 0 {
                Err("SMTP: Smtp port is invalid, smtp support not enabled".to_string())
-            } else if smtp.user == "" {
+            } else if smtp.user.is_empty() {
                 Err("SMTP: Smtp user is empty, smtp support not enabled".to_string())
-            } else if smtp.host == "" {
+            } else if smtp.host.is_empty() {
                 Err("SMTP: Smtp host is empty, smtp support not enabled".to_string())
             } else {
                 let client = SmtpClientBuilder::new(&smtp.host, smtp.port)
-                    .implicit_tls(smtp.encryption == EmailEncryption::TLS)
+                    .implicit_tls(smtp.encryption == EmailEncryption::Tls)
                     .credentials(Credentials::new(&smtp.user, &smtp.password))
                     .connect()
                     .await
@@ -125,8 +125,8 @@ impl ConfigManager {
 #[serde(rename_all = "lowercase")]
 pub enum EmailEncryption {
     None,
-    StartTLS,
-    TLS
+    StartTls,
+    Tls
 }
 
 #[derive(Debug, Serialize, Deserialize)]

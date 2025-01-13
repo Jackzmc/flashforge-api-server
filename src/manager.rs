@@ -36,8 +36,8 @@ impl NotificationType {
             NotificationType::PrintComplete => {
                 let status = printer.get_status().unwrap();
                 let mut str = String::new();
-                write!(str, "File: {}\n", status.current_file.unwrap_or("(None)".to_string())).unwrap();
-                write!(str, "IP: {}\n", printer.ip()).unwrap();
+                writeln!(str, "File: {}", status.current_file.unwrap_or("(None)".to_string())).unwrap();
+                writeln!(str, "IP: {}", printer.ip()).unwrap();
                 // TODO: more data?
                 str
             }
@@ -204,15 +204,15 @@ impl Printers {
     }
 
     pub fn get_printer_names(&self) -> Vec<String> {
-        self.printers.keys().map(|s| s.clone()).collect()
+        self.printers.keys().cloned().collect()
     }
 
     pub fn printers(&self) -> Vec<PrinterContainer> {
-        self.printers.values().map(|v| v.clone()).collect()
+        self.printers.values().cloned().collect()
     }
 
     pub fn get_printer(&self, id: &str) -> Option<PrinterContainer> {
-        self.printers.get(id).map(|printer| printer.clone())
+        self.printers.get(id).cloned()
     }
 
     pub fn add_printer(&mut self, id: String, ip: IpAddr) {

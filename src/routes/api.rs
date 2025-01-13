@@ -51,8 +51,7 @@ async fn try_printer<T, F>(printers: &State<PrinterManager>, printer_id: &str, p
         printer.clone()
     };
     let printer = printer.lock().await;
-    print_fn(&*printer)
-        .map(|r| r)
+    print_fn(&printer)
         .map_err(|e| Json(GenericError {
             error: "PRINTER_ERROR".to_string(),
             message: Some(e)
@@ -128,7 +127,7 @@ pub async fn get_printer_snapshot(printers: & State<PrinterManager>, printer_id:
     };
     trace!("returning snapshot");
     snapshot
-        .map(|img| JpegImage(img))
+        .map(JpegImage)
         .map_err(|_| Either::Left(JpegImage(BASE64_STANDARD.decode(NO_IMAGE_BASE64).unwrap())))
 }
 
