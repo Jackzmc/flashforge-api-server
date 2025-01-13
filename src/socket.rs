@@ -82,6 +82,7 @@ impl PrinterRequest {
             PrinterRequest::GetStatus => {
                 let kv = parse_kv(input)?;
                 debug!("{:?}", kv);
+                let current_file = kv.get("CurrentFile").filter(|s| !s.is_empty()).map(|s| s.to_string());
                 Ok(PrinterResponse::PrinterStatus(PrinterStatus {
                     end_stop: EndStopPosition {
                         x_max: kv.get("X-max").unwrap().parse().unwrap(),
@@ -91,7 +92,7 @@ impl PrinterRequest {
                     machine_status: kv.get("MachineStatus").unwrap().to_string(),
                     move_mode: kv.get("MoveMode").unwrap().to_string(),
                     led: kv.get("LED").unwrap() == "1",
-                    current_file: kv.get("CurrentFile").map(|s| s.to_string()),
+                    current_file
                 }))
             },
             PrinterRequest::GetHeadPosition => {
