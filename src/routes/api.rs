@@ -100,17 +100,6 @@ pub async fn get_printer_head_position(printers: &State<PrinterManager>, printer
     try_printer_json(printers, printer_id, |printer| printer.get_head_position()).await
 }
 
-#[get("/<printer_id>/test")]
-pub async fn test(printers: &State<PrinterManager>, printer_id: &str)
-                                       -> Result<(), Json<GenericError>>
-{
-    let lock = printers.lock().await;
-    let printer = lock.get_printer(printer_id).unwrap();
-    let mut printer = printer.lock().await;
-    lock.send_notification(&mut printer, NotificationType::PrintComplete).await;
-    Ok(())
-}
-
 #[derive(Responder)]
 #[response(content_type = "image/jpeg")]
 pub struct JpegImage(Vec<u8>);
