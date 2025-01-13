@@ -33,9 +33,9 @@ In general, for now:
   * [x] Email
   * [ ] Webhooks
   * [ ] Push?
-  * Progress notifications
+  * [ ] Progress notifications
     * interval (every hour) or % based
-  * Image snapshots in notifications
+  * [x] Image snapshots in notifications
 * [ ] Simple UI that replaces need of polar3d
 * [x] Use config file for printer ips, instead of manually putting IP
 
