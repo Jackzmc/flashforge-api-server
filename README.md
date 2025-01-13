@@ -7,6 +7,15 @@ Built with [Rocket](https://rocket.rs/).
 
 The server by default listens on `localhost:8080`.
 
+# Features
+
+* Notifications on job completion (to email, or webhook such as Discord)
+  * Including image of result
+* API Wrappers (Info, Status, Temperature, Head Position, Progress)
+* Camera Proxy
+  * Allows multiple clients to view stream at once
+
+
 ## Tested Printers
 Should work in theory on all the supported printers of flashforge-finder-api
 * Flashforge Adventuer 5M Pro - Firmware v2.7.9
@@ -25,7 +34,14 @@ In general, for now:
 * `http://localhost:8080/apis/printers/:printerId/snapshot` - Get a single frame of printer's camera
 * `http://localhost:8080/apis/printers/:printerId/camera` - See printer's camera live, supporting multiple clients viewing at once
 
-## Future Work
+## Getting Started
+
+1. Build the project with `cargo build --release` or find a release
+2. Copy `config.example.toml` to `config.toml` and configure it
+    * All sections except [printers] are optional
+3. Run target/release/flashforge-api or the binary file
+    * The current directory must include the `config.toml` file
+# Future Work
 
 * [x] Built in mjpeg proxy 
   * So multiple clients can view at once
@@ -39,10 +55,3 @@ In general, for now:
 * [ ] Simple UI that replaces need of polar3d
 * [x] Use config file for printer ips, instead of manually putting IP
 
-# Usage
-
-1. Build the project with `cargo build --release` or find a release
-2. Copy `config.example.toml` to `config.toml` and configure it
-   * All sections except [printers] are optional
-3. Run target/release/flashforge-api or the binary file
-   * The current directory must include the `config.toml` file
