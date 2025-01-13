@@ -1,4 +1,4 @@
-use crate::manager::{NotificationType, PrinterManager};
+use crate::manager::{PrinterManager};
 use crate::models::{CachedPrinterInfo, GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::printer::{Printer};
 use base64::prelude::BASE64_STANDARD;
