@@ -41,17 +41,19 @@ In general, for now:
     * All sections except [printers] are optional
 3. Run target/release/flashforge-api or the binary file
     * The current directory must include the `config.toml` file
+
 # Future Work
 
-* [x] Built in mjpeg proxy 
-  * So multiple clients can view at once
 * [x] Notifications (email, push?, webhooks?) on completion
   * [x] Email
-  * [ ] Webhooks
+  * [x] Webhooks
   * [ ] Push?
   * [ ] Progress notifications
     * interval (every hour) or % based
   * [x] Image snapshots in notifications
 * [ ] Simple UI that replaces need of polar3d
-* [x] Use config file for printer ips, instead of manually putting IP
+* [x] Write APIs
+  * [x] Set temperature
+  * [ ] Start / stop / pause file
+  * [ ] Move head, bed
 
