@@ -55,15 +55,30 @@ pub struct AuthGuard {
 }
 impl AuthGuard {
     pub(crate) fn check_auth(self, access_type: AccessType) -> Result<(), (Status, Json<GenericError>)> {
+        if self.auth_config.is_none() {
+            trace!("check_auth: no config, passing");
+            return Ok(())
+        }
         if let Some(cfg) = self.auth_config {
+            trace!("auth cfg set");
+            // Password is not required for access type, then OK
+            if (access_type == AccessType::Read && !cfg.password_for_read) || (access_type == AccessType::Write && !cfg.password_for_write) {
+                trace!("no password required for access, OK");
+                return Ok(());
+            }
+            // Password is required for access type, check password
             if (access_type == AccessType::Read && cfg.password_for_read) || (access_type == AccessType::Write && cfg.password_for_write) {
-                if let Some(inp_pass) = self.input_password {
-                    if cfg.password == inp_pass {
+                trace!("password required for access, checking");
+                if let Some(inp_pass) = &self.input_password {
+                    if &cfg.password == inp_pass {
+                        trace!("pass");
                         return Ok(())
                     }
                 }
+                trace!("password failed. provided={}", self.input_password.is_some())
             }
         }
+        trace!("check_auth: fail");
         Err((Status::Unauthorized, Json(GenericError {
             error: "PASSWORD_REQUIRED".to_string(),
             message: Some("The configured password is required to perform this action".to_string()),

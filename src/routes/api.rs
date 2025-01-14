@@ -18,7 +18,6 @@ use reqwest::StatusCode;
 use rocket::http::Status;
 use rocket::outcome::try_outcome;
 use rocket::request::{FromRequest, Outcome};
-use rocket::yansi::Paint;
 use tokio::sync::Mutex;
 use crate::config::{AuthConfig, ConfigManager};
 use crate::socket::PrinterResponse;
@@ -90,7 +89,7 @@ pub async fn get_printer_head_position(auth: AuthGuard, printers: &State<Printer
     try_printer_json(printers, printer_id, |printer| printer.get_head_position()).await
 }
 
-#[post("/<printer_id>/head-position/<temp_index>/<temperature>")]
+#[post("/<printer_id>/set-temperature/<temp_index>/<temperature>")]
 pub async fn set_printer_temp(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str, temp_index: u8, temperature: f32)
     -> Result<Json<ControlSuccess>, (Status, Json<GenericError>)>
 {

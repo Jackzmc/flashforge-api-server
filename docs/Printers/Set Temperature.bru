@@ -1,0 +1,21 @@
+meta {
+  name: Set Temperature
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{PROTOCOL}}://{{HOST}}/api/printers/:printer/set-temperature/:tempIndex/:temperatureC
+  body: none
+  auth: none
+}
+
+params:path {
+  temperatureC: 60
+  tempIndex: 0
+  printer: {{PRINTER_ID}}
+}
+
+docs {
+  Sets the temperature of component of :tempIndex (0 -> T0, 1 -> T1) to temperature in celcius
+}

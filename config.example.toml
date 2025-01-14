@@ -24,12 +24,14 @@ password = ""
 # By default API allows anyone to read or change settings on the printer. This includes setting temperature, moving, starting, cancelling print, etc
 # An optional password can be configured to control access
 
+# If either password_for is set to true, the password must be provided as a "x-secret" header
+
 # Is password needed for write access (set temperature, move, etc.)
 password_for_write = false
 # Is password needed for read access (any printer API)
 password_for_read = false
 # If password is blank, then no entered password will be accepted if a password is required
-password = ""
+password = "test"
 
 [printers]
 # All printers the api uses, this will be listed in /api/printers. The key is the friendly name of printer
