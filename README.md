@@ -1,38 +1,50 @@
 # Flashforge API
 
+An unofficial HTTP API server for Flashforge 3D Printers, allowing REST operations to get information and configure printers programatically.
+
 Based on [01F0/flashforge-finder-api](https://github.com/01F0/flashforge-finder-api), but written in rust.
 I didn't like using flask for a "production server" and wanted to add some features.
 
-Built with [Rocket](https://rocket.rs/).
-
-The server by default listens on `localhost:8080`.
+Built with [Rocket](https://rocket.rs/), defaulted to running on `localhost:8080`
 
 # Features
 
 * Notifications on job completion (to email, or webhook such as Discord)
   * Including image of result
-* API Wrappers (Info, Status, Temperature, Head Position, Progress)
+* APIs
+  * Get info, status, temperature, head position, progress
+  * Get camera stream, snapshot
+  * Set temperature
 * Camera Proxy
   * Allows multiple clients to view stream at once
 
 
 ## Tested Printers
 Should work in theory on all the supported printers of flashforge-finder-api
-* Flashforge Adventuer 5M Pro - Firmware v2.7.9
+* Flashforge Adventurer 5M Pro - Firmware v2.7.9
 
 ## API Doc
 
 The `docs` folder includes documentation for use in [Bruno](https://www.usebruno.com/), set the `PRINTER` environment variable to that of your printers's id.
 
-In general, for now:
-* `http://localhost:8080/apis/printers` - Returns list of printer names
-* `http://localhost:8080/apis/printers/:printerId/info` - Get printer info
-* `http://localhost:8080/apis/printers/:printerId/status` - Get printer status
-* `http://localhost:8080/apis/printers/:printerId/temperatures` - Get sensor temperatures, B for bed, T0 for main sensor
-* `http://localhost:8080/apis/printers/:printerId/head-position` - Get the printer's head position
-* `http://localhost:8080/apis/printers/:printerId/progress` - Get print progress
-* `http://localhost:8080/apis/printers/:printerId/snapshot` - Get a single frame of printer's camera
-* `http://localhost:8080/apis/printers/:printerId/camera` - See printer's camera live, supporting multiple clients viewing at once
+* `GET http://localhost:8080/apis/printers`
+  * Returns list of printer names
+* `GET http://localhost:8080/apis/printers/:printerId/info` 
+  * Get printer info
+* `GET http://localhost:8080/apis/printers/:printerId/status` 
+  * Get printer status
+* `GET http://localhost:8080/apis/printers/:printerId/temperatures`
+  * Get sensor temperatures, B for bed, T0 for main sensor
+* `GET http://localhost:8080/apis/printers/:printerId/head-position`
+  * Get the printer's head position
+* `GET http://localhost:8080/apis/printers/:printerId/progress`
+  * Get print progress
+* `GET http://localhost:8080/apis/printers/:printerId/snapshot`
+  * Get a single frame of printer's camera
+* `GET http://localhost:8080/apis/printers/:printerId/camera`
+  * See printer's camera live, supporting multiple clients viewing at once
+* `POST http://localhost:8080/apis/printers/:printerId/set-temperature/:tempIndex/:tempinC` 
+  * Sets the temperature(°C) for the tempIndex (0 is usually hot end, 1 is the bed)
 
 ## Getting Started
 
