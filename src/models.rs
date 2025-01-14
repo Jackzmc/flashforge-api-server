@@ -28,6 +28,11 @@ pub struct TemperatureMeasurement {
 }
 
 #[derive(Serialize, Clone)]
+pub struct ControlSuccess {
+    pub success: bool
+}
+
+#[derive(Serialize, Clone)]
 pub struct PrinterInfo {
     pub name: String,
     pub firmware_version: String,

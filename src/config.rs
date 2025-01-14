@@ -15,7 +15,7 @@ use crate::manager::NotificationType;
 pub struct Config {
     pub(crate) smtp: Option<EmailConfig>,
     pub(crate) notifications: Option<HashMap<String, NotificationDestinations>>,
-    pub(crate) general: Option<GeneralConfig>,
+    pub(crate) auth: Option<AuthConfig>,
     pub(crate) printers: HashMap<String, PrinterConfig>
 }
 
@@ -68,8 +68,8 @@ impl ConfigManager {
         None
     }
 
-    pub fn general(&self) -> Option<&GeneralConfig> {
-        self.config.general.as_ref()
+    pub fn auth(&self) -> Option<&AuthConfig> {
+        self.config.auth.as_ref()
     }
 
     pub fn printers(&self) -> &HashMap<String, PrinterConfig> {
@@ -97,23 +97,6 @@ impl ConfigManager {
                     .await
                     .unwrap();
                 Ok(Some(client))
-                //
-                // let mut client = SmtpClient::new();
-                // if smtp.encryption == EmailEncryption::StartTLS {
-                //     client = client.without_greeting();
-                // }
-                // // let builder = match smtp.encryption {
-                // //     EmailEncryption::None => SmtpTransport::builder_dangerous(&smtp.host),
-                // //     EmailEncryption::StartTLS => SmtpTransport::starttls_relay(&smtp.host).unwrap(),
-                // //     EmailEncryption::TLS => SmtpTransport::relay(&smtp.host).unwrap()
-                // // };
-                // let tcp = TcpStream::connect((smtp.host.as_str(), smtp.port)).await
-                //     .map_err(|e| e.to_string())?;
-                // let stream = BufStream::new(tcp);
-                // let mut transport = SmtpTransport::new(client, stream).await.map_err(|e| e.to_string())?;
-                // let creds = Credentials::new(smtp.user.clone(), smtp.password.clone());
-                // transport.try_login(&creds, &[Mechanism::Plain]).await.map_err(|e| e.to_string())?;
-                // Ok(Some(transport))
             }
         } else {
             Ok(None)
@@ -144,9 +127,11 @@ pub struct NotificationConfig {
     pub(crate) on_done: Option<Vec<String>>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GeneralConfig {
-    write_password: Option<String>
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuthConfig {
+    pub(crate)password_for_write: bool,
+    pub(crate)password_for_read: bool,
+    pub(crate)password: String
 }
 
 #[derive(Debug, Serialize, Deserialize)]

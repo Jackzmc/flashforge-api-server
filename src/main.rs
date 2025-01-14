@@ -61,8 +61,9 @@ async fn rocket() -> _ {
             api::get_printer_progress,
             api::get_printer_status,
             api::get_printer_head_position,
+            api::set_printer_temp,
             api::get_printer_snapshot,
-            api::get_printer_camera
+            api::get_printer_camera,
         ])
         .register("/", catchers![error_404]);
     info!("Server ready and listening on :{}", rk_config.port);

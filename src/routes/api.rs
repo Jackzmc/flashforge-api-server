@@ -1,5 +1,6 @@
-use crate::manager::{PrinterManager};
-use crate::models::{CachedPrinterInfo, GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
+use std::cmp::PartialEq;
+use crate::manager::{PrinterContainer, PrinterManager, Printers};
+use crate::models::{CachedPrinterInfo, ControlSuccess, GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::printer::{Printer};
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
@@ -8,9 +9,20 @@ use rocket::futures::Stream;
 use rocket::response::stream::{stream, ByteStream};
 use rocket::response::{Responder};
 use rocket::serde::json::Json;
-use rocket::{get, Either, State};
+use rocket::{get, post, Either, Request, State};
 use std::io::Write;
 use std::pin::Pin;
+use std::sync::Arc;
+use futures::StreamExt;
+use reqwest::StatusCode;
+use rocket::http::Status;
+use rocket::outcome::try_outcome;
+use rocket::request::{FromRequest, Outcome};
+use rocket::yansi::Paint;
+use tokio::sync::Mutex;
+use crate::config::{AuthConfig, ConfigManager};
+use crate::socket::PrinterResponse;
+use crate::util::{try_printer_json, AccessType, AuthGuard};
 
 #[get("/names")]
 pub async fn list_printers_names(printers: &State<PrinterManager>) -> Json<Vec<String>> {
@@ -38,65 +50,52 @@ pub async fn list_printers(manager: &State<PrinterManager>) -> Json<Vec<CachedPr
     Json(printers_info)
 }
 
-async fn try_printer<T, F>(printers: &State<PrinterManager>, printer_id: &str, print_fn: F) -> Result<T, Json<GenericError>>
-    where F: FnOnce(&Printer) -> Result<T, String> {
-    // Acquire printer container
-    let printer = {
-        let lock = printers.lock().await;
-        let printer = lock.get_printer(printer_id).ok_or(Json(GenericError {
-            error: "UNKNOWN_PRINTER".to_string(),
-            message: Some(format!("unknown printer {}", printer_id)),
-        }))?;
-        drop(lock);
-        printer.clone()
-    };
-    let printer = printer.lock().await;
-    print_fn(&printer)
-        .map_err(|e| Json(GenericError {
-            error: "PRINTER_ERROR".to_string(),
-            message: Some(e)
-        }))
-}
-async fn try_printer_json<T, F>(printers: &State<PrinterManager>, printer_id: &str, print_fn: F) -> Result<Json<T>, Json<GenericError>>
-where F: FnOnce(&Printer) -> Result<T, String> {
-    try_printer(printers, printer_id, |printer| {
-        print_fn(printer).map(|r| Json(r))
-    }).await
-}
-
 #[get("/<printer_id>/info")]
-pub async fn get_printer_info(printers: &State<PrinterManager>, printer_id: &str)
-    -> Result<Json<PrinterInfo>, Json<GenericError>>
+pub async fn get_printer_info(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str)
+    -> Result<Json<PrinterInfo>, (Status, Json<GenericError>)>
 {
+    auth.check_auth(AccessType::Read)?;
     try_printer_json(printers, printer_id, |printer| printer.get_info()).await
 }
 
 #[get("/<printer_id>/status")]
-pub async fn get_printer_status(printers: &State<PrinterManager>, printer_id: &str)
-    -> Result<Json<PrinterStatus>, Json<GenericError>>
+pub async fn get_printer_status(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str)
+    -> Result<Json<PrinterStatus>, (Status, Json<GenericError>)>
 {
+    auth.check_auth(AccessType::Read)?;
     try_printer_json(printers, printer_id, |printer| printer.get_status()).await
 }
 
 #[get("/<printer_id>/temperatures")]
-pub async fn get_printer_temps(printers: &State<PrinterManager>, printer_id: &str)
-    -> Result<Json<PrinterTemperature>, Json<GenericError>>
+pub async fn get_printer_temps(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str)
+    -> Result<Json<PrinterTemperature>, (Status, Json<GenericError>)>
 {
+    auth.check_auth(AccessType::Read)?;
     try_printer_json(printers, printer_id, |printer| printer.get_temperatures()).await
 }
 
 #[get("/<printer_id>/progress")]
-pub async fn get_printer_progress(printers: &State<PrinterManager>, printer_id: &str)
-    -> Result<Json<PrinterProgress>, Json<GenericError>>
+pub async fn get_printer_progress(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str)
+    -> Result<Json<PrinterProgress>, (Status, Json<GenericError>)>
 {
+    auth.check_auth(AccessType::Read)?;
     try_printer_json(printers, printer_id, |printer| printer.get_progress()).await
 }
 
 #[get("/<printer_id>/head-position")]
-pub async fn get_printer_head_position(printers: &State<PrinterManager>, printer_id: &str)
-    -> Result<Json<PrinterHeadPosition>, Json<GenericError>>
+pub async fn get_printer_head_position(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str)
+    -> Result<Json<PrinterHeadPosition>, (Status, Json<GenericError>)>
 {
+    auth.check_auth(AccessType::Read)?;
     try_printer_json(printers, printer_id, |printer| printer.get_head_position()).await
+}
+
+#[post("/<printer_id>/head-position/<temp_index>/<temperature>")]
+pub async fn set_printer_temp(auth: AuthGuard, printers: &State<PrinterManager>, printer_id: &str, temp_index: u8, temperature: f32)
+    -> Result<Json<ControlSuccess>, (Status, Json<GenericError>)>
+{
+    auth.check_auth(AccessType::Write)?;
+    try_printer_json(printers, printer_id, |printer| printer.set_temperature(temp_index, temperature)).await
 }
 
 #[derive(Responder)]

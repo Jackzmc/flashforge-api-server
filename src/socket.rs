@@ -1,4 +1,4 @@
-use crate::models::{EndStopPosition, Position, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature, TemperatureMeasurement};
+use crate::models::{ControlSuccess, EndStopPosition, Position, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature, TemperatureMeasurement};
 use crate::util::parse_kv;
 use log::{debug};
 use regex::Regex;
@@ -12,12 +12,14 @@ pub enum PrinterRequest {
     GetHeadPosition,
     GetTemperature,
     GetProgress,
-    GetStatus
+    GetStatus,
+    SetTemperature(u8, f32),
 }
 
 #[derive(Serialize)]
 pub enum PrinterResponse {
-    ControlSuccess,
+    #[serde(rename = "success")]
+    ControlSuccess(ControlSuccess),
     #[serde(rename = "info")]
     PrinterInfo(PrinterInfo),
     #[serde(rename = "position")]
@@ -36,7 +38,8 @@ static RE_PRINTER_PROGRESS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+
 impl PrinterRequest {
     pub fn parse_response(&self, input: &str) -> Result<PrinterResponse, String> {
         match self {
-            PrinterRequest::ControlMessage => Ok(PrinterResponse::ControlSuccess),
+            PrinterRequest::ControlMessage => Ok(PrinterResponse::ControlSuccess(ControlSuccess { success: true })),
+            PrinterRequest::SetTemperature(_, _) => Ok(PrinterResponse::ControlSuccess(ControlSuccess { success: true})),
             PrinterRequest::GetInfo => {
                 let kv = parse_kv(input)?;
                 debug!("{:?}", &kv);
@@ -114,15 +117,17 @@ impl PrinterRequest {
     }
 }
 
+// https://marlinfw.org/docs/gcode/M104.html
 impl PrinterRequest {
-    pub fn get_gcode(&self) -> &'static str {
+    pub fn get_gcode(&self) -> String {
         match self {
-            PrinterRequest::ControlMessage => "~M601 S1",
-            PrinterRequest::GetInfo => "~M115",
-            PrinterRequest::GetHeadPosition => "~M114",
-            PrinterRequest::GetTemperature => "~M105",
-            PrinterRequest::GetProgress => "~M27",
-            PrinterRequest::GetStatus => "~M119",
+            PrinterRequest::ControlMessage => "~M601 S1".to_string(),
+            PrinterRequest::GetInfo => "~M115".to_string(),
+            PrinterRequest::GetHeadPosition => "~M114".to_string(),
+            PrinterRequest::GetTemperature => "~M105".to_string(),
+            PrinterRequest::GetProgress => "~M27".to_string(),
+            PrinterRequest::GetStatus => "~M119".to_string(),
+            PrinterRequest::SetTemperature(index, temp) => format!("~M104 S{} T{}", temp, index)
         }
     }
     pub fn get_instruction(&self) -> String {

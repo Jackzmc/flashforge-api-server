@@ -9,7 +9,7 @@ use multipart_stream::Part;
 use reqwest::Url;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
-use crate::models::{PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
+use crate::models::{ControlSuccess, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
 use crate::socket::{PrinterRequest, PrinterResponse};
 
 pub struct Printer {
@@ -151,6 +151,14 @@ impl Printer {
     pub fn get_head_position(&self) -> Result<PrinterHeadPosition, String> {
         match self.send_request(PrinterRequest::GetHeadPosition) {
             Ok(PrinterResponse::PrinterHeadPosition(t)) => Ok(t),
+            Ok(_) => panic!("got wrong response from request"),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn set_temperature(&self, temp_index: u8, temperature_c: f32) -> Result<ControlSuccess, String> {
+        match self.send_request(PrinterRequest::SetTemperature(temp_index, temperature_c)) {
+            Ok(PrinterResponse::ControlSuccess(res)) => Ok(res),
             Ok(_) => panic!("got wrong response from request"),
             Err(e) => Err(e)
         }

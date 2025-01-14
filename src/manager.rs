@@ -47,7 +47,7 @@ impl NotificationType {
     }
 }
 
-type PrinterContainer = Arc<Mutex<Printer>>;
+pub type PrinterContainer = Arc<Mutex<Printer>>;
 
 pub struct Printers {
     printers: HashMap<String, PrinterContainer>,
