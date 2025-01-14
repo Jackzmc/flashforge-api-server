@@ -1,6 +1,5 @@
 use crate::models::{ControlSuccess, EndStopPosition, Position, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature, TemperatureMeasurement};
 use crate::util::parse_kv;
-use log::{debug};
 use regex::Regex;
 use serde::Serialize;
 use std::sync::LazyLock;
@@ -42,7 +41,6 @@ impl PrinterRequest {
             PrinterRequest::SetTemperature(_, _) => Ok(PrinterResponse::ControlSuccess(ControlSuccess { success: true})),
             PrinterRequest::GetInfo => {
                 let kv = parse_kv(input)?;
-                debug!("{:?}", &kv);
                 Ok(PrinterResponse::PrinterInfo(PrinterInfo{
                     name: kv.get("Machine Name").unwrap().to_string(),
                     firmware_version: kv.get("Firmware").unwrap().to_string(),
@@ -71,7 +69,6 @@ impl PrinterRequest {
             },
             PrinterRequest::GetTemperature => {
                 let kv = parse_kv(input)?;
-                debug!("{:?}", kv);
                 let temps = kv.into_iter().map(|(key, val)| {
                     let temp: Vec<f32> = val.split("/").map(|s|s.parse().unwrap()).collect();
                     (key.to_string(), TemperatureMeasurement {
@@ -84,7 +81,6 @@ impl PrinterRequest {
             },
             PrinterRequest::GetStatus => {
                 let kv = parse_kv(input)?;
-                debug!("{:?}", kv);
                 let current_file = kv.get("CurrentFile").filter(|s| !s.is_empty()).map(|s| s.to_string());
                 Ok(PrinterResponse::PrinterStatus(PrinterStatus {
                     end_stop: EndStopPosition {
@@ -107,11 +103,6 @@ impl PrinterRequest {
                     a: kv.get("A").unwrap().parse().unwrap(),
                     b: kv.get("B").unwrap().parse().unwrap(),
                 }))
-            },
-            #[allow(unreachable_patterns)]
-            _ => {
-                debug!("unknown request {:?}. content: {:?}", self, input);
-                Err("unknown request".to_string())
             }
         }
     }

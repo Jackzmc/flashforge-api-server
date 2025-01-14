@@ -1,7 +1,5 @@
-use std::cmp::PartialEq;
-use crate::manager::{PrinterContainer, PrinterManager, Printers};
+use crate::manager::{PrinterManager};
 use crate::models::{CachedPrinterInfo, ControlSuccess, GenericError, PrinterHeadPosition, PrinterInfo, PrinterProgress, PrinterStatus, PrinterTemperature};
-use crate::printer::{Printer};
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use log::trace;
@@ -9,18 +7,10 @@ use rocket::futures::Stream;
 use rocket::response::stream::{stream, ByteStream};
 use rocket::response::{Responder};
 use rocket::serde::json::Json;
-use rocket::{get, post, Either, Request, State};
+use rocket::{get, post, Either, State};
 use std::io::Write;
 use std::pin::Pin;
-use std::sync::Arc;
-use futures::StreamExt;
-use reqwest::StatusCode;
 use rocket::http::Status;
-use rocket::outcome::try_outcome;
-use rocket::request::{FromRequest, Outcome};
-use tokio::sync::Mutex;
-use crate::config::{AuthConfig, ConfigManager};
-use crate::socket::PrinterResponse;
 use crate::util::{try_printer_json, AccessType, AuthGuard};
 
 #[get("/names")]
