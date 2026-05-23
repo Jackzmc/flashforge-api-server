@@ -23,3 +23,4 @@ jobs:
           path: |
             target/${{ matrix.BUILD_TARGET }}/flashforge-api-server
           compression-level: 8
+          
