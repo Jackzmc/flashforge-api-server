@@ -7,8 +7,6 @@ jobs:
     strategy:
       matrix:
         BUILD_TARGET: [release] # refers to a cargo profile
-    outputs:
-      release_built: ${{ steps.set-output.outputs.release_built }}
     steps:
       - name: Checkout
         uses: https://git.jackz.me/actions/checkout@v6
@@ -23,4 +21,3 @@ jobs:
           path: |
             target/${{ matrix.BUILD_TARGET }}/flashforge-api-server
           compression-level: 8
-          

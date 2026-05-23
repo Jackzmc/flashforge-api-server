@@ -45,6 +45,7 @@ async fn rocket() -> _ {
     Printers::start_watch_thread(printers.clone()).await;
 
     let rk_config = rocket::Config {
+        address: std::net::Ipv4Addr::new(0, 0, 0, 0).into(),
         port: 8080,
         ..Default::default()
     };
