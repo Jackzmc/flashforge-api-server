@@ -31,7 +31,7 @@ async fn rocket() -> _ {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::filter::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=warn", env!("CARGO_CRATE_NAME")).into()),
+                .unwrap_or_else(|_| format!("{}=info", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
