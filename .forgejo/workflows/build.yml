@@ -10,9 +10,9 @@ jobs:
     steps:
       - name: Checkout
         uses: https://git.jackz.me/actions/checkout@v6
-      - name: Build binaries in "${{ matrix.BUILD_TARGET }}" mode
+      - name: Build
         run: cargo build --profile ${{ matrix.BUILD_TARGET }}
-      - name: Run tests in "${{ matrix.BUILD_TARGET }}" mode
+      - name: Run tests
         run: cargo test --profile ${{ matrix.BUILD_TARGET }}
       - name: Upload artifacts
         uses: https://git.jackz.me/actions/upload-artifact@v5
